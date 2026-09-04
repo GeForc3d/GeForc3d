@@ -95,6 +95,8 @@ export interface PoseDef {
 
   /** Horizontal anchor in the frame. Defaults to centre. */
   anchorX?: number;
+  /** Widest a figure may be drawn. Lying poses need almost the full frame. */
+  maxWidthFraction?: number;
   cameraHeight?: CompositionTarget['cameraHeight'];
   orientation?: CompositionTarget['orientation'];
 
@@ -137,6 +139,7 @@ export function definePose(def: PoseDef): Pose {
       centreX: s.placement?.centreX ?? (def.anchorX ?? 0.5),
       centreY: s.placement?.centreY ?? comp.anchorY,
       heightFraction: s.placement?.heightFraction ?? comp.subjectHeight,
+      maxWidthFraction: s.placement?.maxWidthFraction ?? def.maxWidthFraction,
     },
   }));
 
@@ -160,8 +163,12 @@ export function definePose(def: PoseDef): Pose {
   });
 
   const rig = subjectDefs[0].rig;
+  // Lean and hip tilt are read back off the built skeleton, not off the rig
+  // fields. A pose that rotates the whole body has a rig lean of zero and a
+  // skeleton lean of ninety degrees, and the matcher must target what the
+  // camera will actually see.
   const torsoTarget: TorsoTarget = {
-    leanDeg: rig.leanDeg ?? 0,
+    leanDeg: Math.round(f.torsoLeanDeg * 10) / 10,
     leanTolerance: def.torso?.leanTolerance ?? 11,
     yawDeg: rig.yawDeg ?? 0,
     yawTolerance: def.torso?.yawTolerance ?? 24,
@@ -169,7 +176,7 @@ export function definePose(def: PoseDef): Pose {
   };
 
   const hipTarget: HipTarget = {
-    tiltDeg: rig.hipTiltDeg ?? 0,
+    tiltDeg: Math.round(f.hipTiltDeg * 10) / 10,
     tolerance: def.hip?.tolerance ?? 9,
     weightSide:
       def.hip?.weightSide ??

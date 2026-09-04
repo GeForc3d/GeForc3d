@@ -65,6 +65,12 @@ export interface RigSpec {
   yawDeg?: number;
   /** Lateral lean of the torso in the image plane. + = leaning toward image right. */
   leanDeg?: number;
+  /**
+   * Rotates the WHOLE figure about the hip centre once it is built. Lean tips
+   * the torso relative to the legs; this tips everything together, which is what
+   * lying poses need. Negative rotates the head toward image left.
+   */
+  rotateDeg?: number;
   /** Contrapposto hip push as a fraction of hip width. + = hips toward image right. */
   hipShift?: number;
   /** Shoulder line tilt. + = subject's left shoulder drops. */
@@ -171,9 +177,11 @@ export function buildSkeleton(spec: RigSpec): LandmarkSet {
   const bodyC = Math.cos(rad(yaw));
   const squash = (p: Vec2): Vec2 => ({ x: axis + (p.x - axis) * bodyC, y: p.y });
 
+  const spin = spec.rotateDeg ?? 0;
   const pts: Landmark[] = new Array(LANDMARK_COUNT);
   const set = (i: number, p: Vec2, vis = 1) => {
-    pts[i] = { ...clone(p), visibility: vis };
+    const q = spin ? rotateAround(p, hipCentre, spin) : p;
+    pts[i] = { ...clone(q), visibility: vis };
   };
 
   set(L.NOSE, nose);

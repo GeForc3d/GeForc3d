@@ -500,3 +500,61 @@ ul {
 .notice--danger {
   border-color: rgba(255, 90, 82, 0.35);
 }
+
+/* ---------- Motion ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Contrast ---------- */
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-2: #b4bec9;
+    --text-3: #94a0ad;
+    --hairline: #35424f;
+  }
+}
+
+/* ---------- Wide screens ----------
+   Desktop is for development, not a second product. The app stays a phone-width
+   column rather than stretching a mobile layout across a monitor (§102). */
+
+@media (min-width: 900px) {
+  #root {
+    background:
+      radial-gradient(90% 60% at 50% 0%, #0a0f16, #000 70%);
+    padding: 24px 0;
+    align-items: flex-start;
+  }
+
+  .app {
+    min-height: min(900px, calc(100dvh - 48px));
+    border: 1px solid var(--hairline);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+}
+
+/* Coarse pointers get no hover-only affordances. */
+@media (hover: hover) and (pointer: fine) {
+  .chip:hover {
+    border-color: var(--hairline-strong);
+  }
+
+  .pose-card__link:hover .pose-card__media {
+    border-color: var(--hairline-strong);
+  }
+
+  .nav__item:hover {
+    color: var(--text-2);
+  }
+}

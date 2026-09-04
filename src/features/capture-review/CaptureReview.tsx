@@ -75,7 +75,7 @@ export function CaptureReview({
           Next pose
         </button>
         <button type="button" className="btn btn--primary" onClick={onKeep}>
-          Keep shooting
+          Keep
         </button>
       </div>
     </div>

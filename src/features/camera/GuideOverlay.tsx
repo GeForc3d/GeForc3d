@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import type { ResolvedPose } from '@/models/pose';
 import type { OverlayTransform } from '@/models/shotSession';
 import { PoseSilhouette } from '@/components/PoseSilhouette';
+import { groundFor } from '@/components/PoseReference';
 import { reportBrokenAsset } from '@/data/assetManifest';
 
 /**
@@ -158,6 +159,7 @@ export function GuideOverlay({
           ) : (
             <PoseSilhouette
               skeletons={pose.targetSkeletons}
+              ground={groundFor(pose)}
               mirrored={mirrored}
               fill="#EAF1FB"
               aspect={containerHeight > 0 ? containerWidth / containerHeight : 3 / 4}

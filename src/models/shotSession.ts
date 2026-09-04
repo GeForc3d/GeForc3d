@@ -31,6 +31,8 @@ export interface ShotSession {
   overlayLocked: boolean;
   guideEnabled: boolean;
   gridEnabled: boolean;
+  /** Speak each new instruction aloud, so the subject hears it too. */
+  voiceEnabled: boolean;
 
   /** Poses actually shot in this session, in order. */
   capturedPoseIds: string[];
@@ -80,6 +82,7 @@ export const createShotSession = (partial: Partial<ShotSession> = {}): ShotSessi
     overlayLocked: false,
     guideEnabled: true,
     gridEnabled: true,
+    voiceEnabled: false,
     capturedPoseIds: [],
     facingMode: 'environment',
     createdAt: now,

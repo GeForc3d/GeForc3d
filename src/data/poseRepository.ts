@@ -15,6 +15,7 @@ const resolve = (pose: Pose): ResolvedPose => ({
       centreX: s.placement.centreX,
       centreY: s.placement.centreY,
       heightFraction: s.placement.heightFraction,
+      maxWidthFraction: s.placement.maxWidthFraction,
     }),
   ),
   assets: resolveAssets(pose.id),

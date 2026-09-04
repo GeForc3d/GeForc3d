@@ -39,6 +39,8 @@ export type IconName =
   | 'warning'
   | 'info'
   | 'compass'
+  | 'voice'
+  | 'voice-off'
   | 'settings';
 
 interface Props extends Omit<SVGProps<SVGSVGElement>, 'name'> {
@@ -183,6 +185,19 @@ const P: Record<IconName, JSX.Element> = {
     <>
       <circle cx="12" cy="12" r="8.5" />
       <path d="m14.8 9.2-1.5 4.1-4.1 1.5 1.5-4.1z" />
+    </>
+  ),
+  voice: (
+    <>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3M9 21h6" />
+    </>
+  ),
+  'voice-off': (
+    <>
+      <path d="M4 4l16 16" />
+      <path d="M15 5.2V6a3 3 0 0 0-5.6-1.5M9 9.4V11a3 3 0 0 0 4.6 2.5" />
+      <path d="M5.5 11.5a6.5 6.5 0 0 0 9.9 5.6M18.5 11.5a6.4 6.4 0 0 1-.5 2.5M12 18v3M9 21h6" />
     </>
   ),
   settings: (

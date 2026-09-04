@@ -20,6 +20,7 @@ import { CaptureReview } from '@/features/capture-review/CaptureReview';
 import { useCameraController } from './useCameraController';
 import { useViewGeometry } from './useViewGeometry';
 import { useVisionGuidance } from './useVisionGuidance';
+import { useVoiceGuidance } from './useVoiceGuidance';
 import { GuideOverlay } from './GuideOverlay';
 import { CameraGrid } from './CameraGrid';
 import { GuidanceHud } from './GuidanceHud';
@@ -54,9 +55,23 @@ export function CameraScreen() {
 
   const pose = PoseRepository.get(session.selectedPoseId);
   const constraints = useMemo(() => constraintsFor(session), [session]);
+
+  /**
+   * The pose switcher offers what fits the current shot. When the user has not
+   * said how many people they are shooting, the pose they are already using is
+   * the answer: someone photographing one person does not want the tray full of
+   * couples. An explicit choice always wins over this default.
+   */
+  const trayConstraints = useMemo(
+    () =>
+      constraints.peopleType || !pose
+        ? constraints
+        : { ...constraints, peopleType: pose.peopleType },
+    [constraints, pose],
+  );
   const options = useMemo(
-    () => compatiblePoses(PoseRepository.all(), constraints, 24),
-    [constraints],
+    () => compatiblePoses(PoseRepository.all(), trayConstraints, 24),
+    [trayConstraints],
   );
 
   const { videoRef, state, environment, videoReady, onVideoLoaded, start, switchCamera } =
@@ -72,6 +87,11 @@ export function CameraScreen() {
     videoRef,
     geometryRef,
   });
+
+  const { supported: voiceSupported } = useVoiceGuidance(
+    guidance,
+    session.voiceEnabled && guideActive && !capture,
+  );
 
   useEffect(() => {
     if (state.facingMode !== session.facingMode) update({ facingMode: state.facingMode });
@@ -303,29 +323,6 @@ model ${visionStatus}`}
           />
         )}
 
-        {capture && pose && (
-          <CaptureReview
-            capture={capture}
-            pose={pose}
-            shotCount={session.capturedPoseIds.length}
-            onKeep={() => {
-              releaseCapture(capture);
-              setCapture(null);
-            }}
-            onRetake={() => {
-              releaseCapture(capture);
-              setCapture(null);
-              update({
-                capturedPoseIds: session.capturedPoseIds.slice(0, -1),
-              });
-            }}
-            onNextPose={() => {
-              releaseCapture(capture);
-              setCapture(null);
-              stepPose(1);
-            }}
-          />
-        )}
       </div>
 
       <div className="cam__bottom">
@@ -388,6 +385,17 @@ model ${visionStatus}`}
             <Icon name="reset" size={19} />
             Reset
           </button>
+          {voiceSupported && (
+            <button
+              type="button"
+              className={`tool${session.voiceEnabled ? ' tool--on' : ''}`}
+              onClick={() => update({ voiceEnabled: !session.voiceEnabled })}
+              aria-pressed={session.voiceEnabled}
+            >
+              <Icon name={session.voiceEnabled ? 'voice' : 'voice-off'} size={19} />
+              Voice
+            </button>
+          )}
           <button type="button" className="tool" onClick={() => setShowSetup(true)}>
             <Icon name="filter" size={19} />
             Setup
@@ -444,6 +452,28 @@ model ${visionStatus}`}
           </div>
         </div>
       </div>
+
+      {capture && pose && (
+        <CaptureReview
+          capture={capture}
+          pose={pose}
+          shotCount={session.capturedPoseIds.length}
+          onKeep={() => {
+            releaseCapture(capture);
+            setCapture(null);
+          }}
+          onRetake={() => {
+            releaseCapture(capture);
+            setCapture(null);
+            update({ capturedPoseIds: session.capturedPoseIds.slice(0, -1) });
+          }}
+          onNextPose={() => {
+            releaseCapture(capture);
+            setCapture(null);
+            stepPose(1);
+          }}
+        />
+      )}
 
       <PoseTray
         open={showTray}

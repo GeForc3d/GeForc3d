@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import type { ResolvedPose } from '@/models/pose';
 import { reportBrokenAsset } from '@/data/assetManifest';
-import { PoseSilhouette } from './PoseSilhouette';
+import { PoseSilhouette, type GroundHint } from './PoseSilhouette';
+import type { Pose } from '@/models/pose';
 
 interface Props {
   pose: ResolvedPose;
@@ -51,7 +52,11 @@ export function PoseReference({
   return (
     <div className={['pose-ref', className].filter(Boolean).join(' ')}>
       <div className="pose-render">
-        <PoseSilhouette skeletons={pose.targetSkeletons} aspect={aspect} />
+        <PoseSilhouette
+          skeletons={pose.targetSkeletons}
+          aspect={aspect}
+          ground={groundFor(pose)}
+        />
       </div>
       {showBadge && (
         <span className="dev-badge pose-render__badge">
@@ -60,4 +65,24 @@ export function PoseReference({
       )}
     </div>
   );
+}
+
+/** What the pose is resting on, from its own body position and rig lean. */
+export function groundFor(pose: Pose): GroundHint {
+  switch (pose.bodyPosition) {
+    case 'sitting':
+      return 'seat';
+    case 'lying':
+      return 'floor';
+    case 'leaning': {
+      // A railing is a horizontal line the subject rests on; a wall is a
+      // vertical surface beside them. Drawing one as the other misleads.
+      if (pose.requiredElements.includes('railing')) return 'rail';
+      const lean = pose.targetSubjects[0]?.rig.leanDeg ?? 0;
+      if (Math.abs(lean) < 3) return 'none';
+      return lean < 0 ? 'wall-left' : 'wall-right';
+    }
+    default:
+      return 'none';
+  }
 }

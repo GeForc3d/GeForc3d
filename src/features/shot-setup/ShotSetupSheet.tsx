@@ -95,15 +95,7 @@ export function ShotSetupSheet({
       <div className="setup-group">
         <div className="setup-group__title">
           <span className="eyebrow">Scene</span>
-          {draft.scene && (
-            <button
-              type="button"
-              className="setup-group__hint"
-              onClick={() => setDraft({ ...draft, scene: null })}
-            >
-              Clear
-            </button>
-          )}
+          <span className="setup-group__hint">Tap again to remove</span>
         </div>
         <div className="chip-row">
           {SCENES.map((s) => (

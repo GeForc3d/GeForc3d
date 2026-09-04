@@ -26,10 +26,24 @@ await page.waitForTimeout(300);
 await page.getByRole('button', { name: /^Setup$/i }).first().click();
 await page.waitForTimeout(600);
 await page.locator('.sheet').getByRole('button', { name: 'Sitting', exact: true }).click();
-await page.locator('.sheet').getByRole('button', { name: 'Standing', exact: true }).click();
 await page.locator('.sheet__foot').getByRole('button', { name: 'Apply' }).click();
 await page.waitForTimeout(900);
 await page.screenshot({ path: `${OUT}/cam-4-incompatible.png` });
 console.log('SHEET TITLE:', await page.locator('.sheet__title').innerText().catch(()=>'(none)'));
 console.log('OPTIONS:', await page.locator('.sheet .pose-card__name').allTextContents());
+// Choose one of the offered replacements and confirm we land straight back in camera.
+await page.locator('.sheet .pose-card__link').first().click();
+await page.waitForTimeout(800);
+console.log('AFTER PICK URL:', page.url());
+console.log('ACTIVE POSE:', await page.locator('.pose-pill span').innerText());
+await page.screenshot({ path: `${OUT}/cam-5-after-pick.png` });
+// Capture and review
+await page.locator('.shutter').click();
+await page.waitForTimeout(1400);
+await page.screenshot({ path: `${OUT}/cam-6-review.png` });
+console.log('REVIEW VISIBLE:', await page.locator('.review').count());
+console.log('CONTROLS COVERED:', await page.evaluate(() => {
+  const el = document.elementFromPoint(195, 800);
+  return el ? el.className : 'none';
+}));
 await browser.close();

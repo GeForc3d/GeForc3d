@@ -118,7 +118,12 @@ export interface TargetSubject {
   label: string;
   rig: RigSpec;
   /** Where this subject sits in the pose's own preview box. */
-  placement: { centreX: number; centreY: number; heightFraction: number };
+  placement: {
+    centreX: number;
+    centreY: number;
+    heightFraction: number;
+    maxWidthFraction?: number;
+  };
   /** Resolved landmarks, filled by the repository at load time. */
   skeleton?: LandmarkSet;
 }

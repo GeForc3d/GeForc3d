@@ -17,8 +17,15 @@ import { distance, midpoint, visibilityOf, type Point } from '@/pose-matching/fe
  * composites cleanly instead of showing translucent seams.
  */
 
+/**
+ * A hint at what the body is resting on. A seated figure drawn in mid-air reads
+ * as falling; one line at the seat edge makes it read as sitting.
+ */
+export type GroundHint = 'none' | 'seat' | 'floor' | 'rail' | 'wall-left' | 'wall-right';
+
 interface Props {
   skeletons: LandmarkSet[];
+  ground?: GroundHint;
   opacity?: number;
   fill?: string;
   /** Shade colour for the far side of the figure. Must be fully opaque. */
@@ -239,6 +246,7 @@ export function PoseSilhouette({
   aspect = 3 / 4,
   mirrored = false,
   shaded = true,
+  ground = 'none',
 }: Props) {
   const gid = useId().replace(/:/g, '');
   const height = 1;
@@ -275,6 +283,14 @@ export function PoseSilhouette({
         </defs>
       )}
       <g opacity={opacity} transform={mirrored ? `translate(${width} 0) scale(-1 1)` : undefined}>
+        {ground !== 'none' &&
+          skeletons.length > 0 &&
+          groundMark(
+            skeletons[0].map((q) => ({ ...q, x: q.x * width })),
+            ground,
+            width,
+            height,
+          )}
         {skeletons.map((skeleton, si) => {
           // Skeletons are authored in a square 0..1 box; map x into the viewBox.
           const s = skeleton.map((q) => ({ ...q, x: q.x * width }));
@@ -352,4 +368,41 @@ function headTilt(s: LandmarkSet, m: Metrics): number {
   const dy = m.headCentre.y - shoulder.y;
   if (Math.hypot(dx, dy) < 1e-6) return 0;
   return (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+}
+
+/**
+ * The surface the pose depends on, drawn as a single understated rule. It is
+ * information, not decoration: a seated pose without it is unreadable.
+ */
+function groundMark(
+  s: LandmarkSet,
+  hint: GroundHint,
+  width: number,
+  height: number,
+): JSX.Element | null {
+  const stroke = 'rgba(154, 170, 192, 0.3)';
+  const w = 0.0035;
+
+  if (hint === 'seat' || hint === 'floor' || hint === 'rail') {
+    const y =
+      hint === 'seat'
+        ? Math.max(p(s, L.LEFT_HIP).y, p(s, L.RIGHT_HIP).y) + 0.012
+        : hint === 'rail'
+          ? (p(s, L.LEFT_WRIST).y + p(s, L.RIGHT_WRIST).y) / 2
+          : Math.max(...s.map((q) => q.y)) + 0.035;
+    if (y > height) return null;
+    return (
+      <line x1={width * 0.06} y1={y} x2={width * 0.94} y2={y} stroke={stroke} strokeWidth={w} />
+    );
+  }
+
+  const bodyX = (p(s, L.LEFT_SHOULDER).x + p(s, L.RIGHT_SHOULDER).x) / 2;
+  const spread = Math.abs(p(s, L.LEFT_SHOULDER).x - p(s, L.RIGHT_SHOULDER).x);
+  const x =
+    hint === 'wall-left'
+      ? Math.max(width * 0.04, bodyX - spread - 0.05)
+      : Math.min(width * 0.96, bodyX + spread + 0.05);
+  return (
+    <line x1={x} y1={height * 0.06} x2={x} y2={height * 0.96} stroke={stroke} strokeWidth={w} />
+  );
 }
