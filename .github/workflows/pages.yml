@@ -42,8 +42,10 @@ jobs:
 
       - run: npm run build
 
-      # Turns Pages on for the repository if it is not already, so the first
-      # deploy does not need anyone to visit the settings screen.
+      # Tries to turn Pages on for the repository. Where the workflow token is
+      # not permitted to create a Pages site this fails with "Resource not
+      # accessible by integration", and someone has to set
+      # Settings > Pages > Source to "GitHub Actions" once by hand.
       - uses: actions/configure-pages@v5
         with:
           enablement: true

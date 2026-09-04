@@ -27,6 +27,43 @@ clean image, and Back keeps the user's context.
 The camera needs a secure context. `localhost` counts; anything else must be
 served over https.
 
+## Running it on your phone
+
+iOS Safari only grants camera access over **https** or on `localhost`. A LAN
+address like `http://192.168.1.5:5173` will load the app but the camera will
+refuse, so the usual "open the dev server on your phone" approach does not work
+here. Two options that do:
+
+### GitHub Pages (a permanent link)
+
+`.github/workflows/pages.yml` builds and deploys on every push. It needs Pages
+switched on once, because the workflow token is not allowed to create the Pages
+site itself:
+
+> Repository **Settings → Pages → Build and deployment → Source → GitHub Actions**
+
+Then re-run the workflow (or push anything). The app lands at
+`https://<owner>.github.io/<repo>/` and every later push updates it.
+
+### A tunnel (for iterating)
+
+Faster while you are changing things — your phone hits your local dev server
+over https, with hot reload:
+
+```bash
+npm run dev -- --host
+npx cloudflared tunnel --url http://localhost:5173
+```
+
+That prints a `trycloudflare.com` https URL. Open it on the phone.
+
+### On the phone itself
+
+Tap **Use this pose** to enter the camera; that is when Safari asks for
+permission. If you deny it by accident, Settings → Safari → Camera → Ask, then
+reload. Share → Add to Home Screen gives a full-screen icon, but nothing
+requires it.
+
 ## What it does
 
 **Discover** — describe the shot in your own words ("sitting at a cafe beside a
