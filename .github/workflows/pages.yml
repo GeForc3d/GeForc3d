@@ -32,13 +32,21 @@ jobs:
           node-version: 22
           cache: npm
 
+      # Playwright is only needed for the smoke suite, which needs a served
+      # build and does not run here. Skip its browser download.
       - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - run: npm test
 
       - run: npm run build
 
+      # Turns Pages on for the repository if it is not already, so the first
+      # deploy does not need anyone to visit the settings screen.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
