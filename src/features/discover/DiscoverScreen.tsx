@@ -4,6 +4,7 @@ import { BRAND } from '@/app/brand';
 import { routes } from '@/app/routes';
 import { useShotSession } from '@/app/ShotSessionContext';
 import { Icon } from '@/components/Icon';
+import { SceneGlyph } from '@/components/SceneGlyph';
 import { PoseCard } from '@/components/PoseCard';
 import { PoseReference } from '@/components/PoseReference';
 import { PoseRepository } from '@/data/poseRepository';
@@ -51,7 +52,7 @@ export function DiscoverScreen() {
   const hasIntent = sessionHasIntent(session);
 
   const results = useMemo(
-    () => (hasIntent ? recommend(PoseRepository.all(), constraints, { limit: 12 }) : []),
+    () => recommend(PoseRepository.all(), constraints, { limit: hasIntent ? 12 : 6 }),
     [constraints, hasIntent],
   );
 
@@ -180,42 +181,44 @@ export function DiscoverScreen() {
           </div>
         )}
 
-        <section className="section">
-          <div className="section__head">
-            <h3 className="section-title">Or choose a scene</h3>
-            <Link to={routes.poses} className="section__link">
-              Browse all
-            </Link>
-          </div>
-          <div className="scene-grid">
-            {FEATURED_SCENES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`scene-tile${session.scene === s ? ' scene-tile--on' : ''}`}
-                onClick={() => pickScene(s)}
-                aria-pressed={session.scene === s}
-              >
-                <Icon name="compass" className="scene-tile__mark" size={62} />
-                {SCENE_LABELS[s]}
+        {!hasIntent && (
+          <section className="section">
+            <div className="section__head">
+              <h3 className="section-title">Or choose a scene</h3>
+              <Link to={routes.poses} className="section__link">
+                Browse all
+              </Link>
+            </div>
+            <div className="scene-grid">
+              {FEATURED_SCENES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`scene-tile${session.scene === s ? ' scene-tile--on' : ''}`}
+                  onClick={() => pickScene(s)}
+                  aria-pressed={session.scene === s}
+                >
+                  <SceneGlyph scene={s} className="scene-tile__mark" size={58} />
+                  {SCENE_LABELS[s]}
+                </button>
+              ))}
+              <button type="button" className="scene-tile" onClick={() => setEditing(true)}>
+                <Icon name="plus" className="scene-tile__mark" size={58} />
+                More
               </button>
-            ))}
-            <button
-              type="button"
-              className="scene-tile"
-              onClick={() => setEditing(true)}
-            >
-              <Icon name="plus" className="scene-tile__mark" size={62} />
-              More
-            </button>
-          </div>
-        </section>
+            </div>
+          </section>
+        )}
 
-        {hasIntent && (
+        {(
           <>
             <div className="results-head">
               <h3 className="section-title">
-                {results.length ? 'Poses for this shot' : 'Nothing fits yet'}
+                {!hasIntent
+                  ? 'Good places to start'
+                  : results.length
+                    ? 'Poses for this shot'
+                    : 'Nothing fits yet'}
               </h3>
               {results.length > 0 && (
                 <Link to={routes.poses} className="section__link">
@@ -251,14 +254,27 @@ export function DiscoverScreen() {
           </>
         )}
 
-        {!hasIntent && (
+        {hasIntent && (
           <section className="section">
             <div className="section__head">
-              <h3 className="section-title">Not sure yet</h3>
+              <h3 className="section-title">Change the scene</h3>
             </div>
-            <Link to={routes.poses} className="btn btn--secondary btn--block">
-              Browse all poses
-            </Link>
+            <div className="chip-scroll">
+              {FEATURED_SCENES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`chip${session.scene === s ? ' chip--on' : ''}`}
+                  onClick={() => pickScene(s)}
+                  aria-pressed={session.scene === s}
+                >
+                  {SCENE_LABELS[s]}
+                </button>
+              ))}
+              <button type="button" className="chip chip--add" onClick={() => setEditing(true)}>
+                More
+              </button>
+            </div>
           </section>
         )}
 

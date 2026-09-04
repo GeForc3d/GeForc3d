@@ -52,6 +52,7 @@ button {
 
 a {
   color: var(--blue-hi);
+  text-decoration: none;
 }
 
 h1,
@@ -383,8 +384,8 @@ ul {
   padding: 3px 7px;
   border-radius: 6px;
   border: 1px solid var(--hairline-strong);
-  background: rgba(5, 7, 11, 0.78);
-  color: var(--text-2);
+  background: rgba(5, 7, 11, 0.86);
+  color: #aab6c6;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;

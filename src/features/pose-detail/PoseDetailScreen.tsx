@@ -72,7 +72,7 @@ export function PoseDetailScreen() {
 
       <div className="screen__scroll">
         <div className="detail__media">
-          <PoseReference pose={pose} aspect={3 / 4} />
+          <PoseReference pose={pose} aspect={4 / 5} />
           <div className="detail__fade" />
         </div>
 

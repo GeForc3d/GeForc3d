@@ -1,4 +1,5 @@
 import type { PoseAssets } from '@/models/pose';
+import { appBasePath } from '@/utilities/basePath';
 
 /**
  * ASSET HONESTY (§35, §36).
@@ -36,12 +37,7 @@ export const POSE_ASSET_MANIFEST: Record<string, PoseAssetEntry> = {
   // },
 };
 
-const base = (): string => {
-  // Vite `base: './'` means assets resolve relative to the document.
-  if (typeof document === 'undefined') return '';
-  const href = document.baseURI ?? '';
-  return href.endsWith('/') ? href : `${href.replace(/[^/]*$/, '')}`;
-};
+const base = appBasePath;
 
 export const resolveAssets = (poseId: string): PoseAssets => {
   const entry = POSE_ASSET_MANIFEST[poseId];

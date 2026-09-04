@@ -35,7 +35,7 @@ export function PoseReference({
   if (usingPhoto) {
     return (
       <img
-        className={className}
+        className={['pose-ref', 'pose-ref--photo', className].filter(Boolean).join(' ')}
         src={src!}
         alt={`${pose.name} reference`}
         loading="lazy"
@@ -49,7 +49,7 @@ export function PoseReference({
   }
 
   return (
-    <div className={className} style={{ position: 'relative' }}>
+    <div className={['pose-ref', className].filter(Boolean).join(' ')}>
       <div className="pose-render">
         <PoseSilhouette skeletons={pose.targetSkeletons} aspect={aspect} />
       </div>

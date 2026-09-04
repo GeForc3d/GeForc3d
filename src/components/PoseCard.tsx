@@ -42,13 +42,15 @@ export function PoseCard({
       >
         <div className="pose-card__media">
           <PoseReference pose={pose} showBadge={false} />
-          <span
-            className={`pose-card__diff${
-              pose.difficulty === 'editorial' ? ' pose-card__diff--editorial' : ''
-            }`}
-          >
-            {DIFFICULTY_LABELS[pose.difficulty]}
-          </span>
+          {pose.difficulty !== 'easy' && (
+            <span
+              className={`pose-card__diff${
+                pose.difficulty === 'editorial' ? ' pose-card__diff--editorial' : ''
+              }`}
+            >
+              {DIFFICULTY_LABELS[pose.difficulty]}
+            </span>
+          )}
         </div>
         <div className="pose-card__meta">
           <div className="pose-card__name">{pose.name}</div>

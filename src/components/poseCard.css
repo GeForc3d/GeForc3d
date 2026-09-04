@@ -1,3 +1,17 @@
+/* The reference always fills the frame it is given, whether it is a photograph
+   or the procedural render standing in for one. */
+.pose-ref {
+  position: absolute;
+  inset: 0;
+}
+
+.pose-ref--photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .pose-render {
   position: absolute;
   inset: 0;

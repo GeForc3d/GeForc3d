@@ -6,44 +6,81 @@ import { distance, midpoint, visibilityOf, type Point } from '@/pose-matching/fe
  * Renders a human silhouette from a target skeleton.
  *
  * This is the DEVELOPMENT reference standing in for photography that has not
- * been shot yet (§35). It is drawn from the pose's real joint data, at real
- * human proportions, so it communicates body shape, placement and framing —
- * which is exactly what the transparent camera guide needs. It is not a
- * photograph and every surface that shows it says so.
+ * been shot (§35). It is drawn from the pose's real joint data at real human
+ * proportions, so it communicates body shape, placement and framing — which is
+ * exactly what the transparent camera guide needs. It is not a photograph, and
+ * every surface that shows it says so.
  *
- * Every part is drawn opaque inside one group so that group-level opacity
- * produces a clean composite instead of overlapping translucent seams.
+ * Limbs are tapered capsules rather than round-capped strokes: a constant-width
+ * stroke leaves a visible ball at every joint and the figure reads as a
+ * mannequin. Everything is drawn opaque inside one group so group opacity
+ * composites cleanly instead of showing translucent seams.
  */
 
 interface Props {
   skeletons: LandmarkSet[];
-  /** 0..1 opacity applied to the whole figure. */
   opacity?: number;
   fill?: string;
-  outline?: string;
+  /** Shade colour for the far side of the figure. Must be fully opaque. */
+  shade?: string;
   className?: string;
   style?: CSSProperties;
-  /** Rendered aspect ratio of the viewBox. */
+  /** Rendered aspect ratio of the viewBox (width / height). */
   aspect?: number;
   mirrored?: boolean;
   /** Adds a soft tonal gradient so the figure reads as a body, not a sticker. */
   shaded?: boolean;
 }
 
+const p = (s: LandmarkSet, i: number): Point => s[i] ?? { x: 0.5, y: 0.5 };
+
+const lerp = (a: Point, b: Point, t: number): Point => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+});
+const n = (v: number) => v.toFixed(4);
+
+/** Outline of a cone between two circles: two tangents and two arcs. */
+function taperedCapsule(a: Point, ra: number, b: Point, rb: number): string {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const d = Math.hypot(dx, dy);
+  if (d < 1e-6 || d <= Math.abs(ra - rb)) {
+    const c = ra >= rb ? a : b;
+    const r = Math.max(ra, rb);
+    return `M${n(c.x - r)},${n(c.y)}a${n(r)},${n(r)} 0 1,0 ${n(2 * r)},0a${n(r)},${n(r)} 0 1,0 ${n(-2 * r)},0Z`;
+  }
+  const theta = Math.atan2(dy, dx);
+  const phi = Math.acos((ra - rb) / d);
+
+  const a1 = { x: a.x + ra * Math.cos(theta + phi), y: a.y + ra * Math.sin(theta + phi) };
+  const b1 = { x: b.x + rb * Math.cos(theta + phi), y: b.y + rb * Math.sin(theta + phi) };
+  const b2 = { x: b.x + rb * Math.cos(theta - phi), y: b.y + rb * Math.sin(theta - phi) };
+  const a2 = { x: a.x + ra * Math.cos(theta - phi), y: a.y + ra * Math.sin(theta - phi) };
+
+  return [
+    `M${n(a1.x)},${n(a1.y)}`,
+    `L${n(b1.x)},${n(b1.y)}`,
+    `A${n(rb)},${n(rb)} 0 0,0 ${n(b2.x)},${n(b2.y)}`,
+    `L${n(a2.x)},${n(a2.y)}`,
+    `A${n(ra)},${n(ra)} 0 0,0 ${n(a1.x)},${n(a1.y)}`,
+    'Z',
+  ].join(' ');
+}
+
 interface Metrics {
   unit: number;
   headCentre: Point;
   headRadius: number;
+  neckBase: Point;
 }
-
-const p = (s: LandmarkSet, i: number): Point => s[i] ?? { x: 0.5, y: 0.5 };
 
 function metricsFor(s: LandmarkSet): Metrics {
   const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
   const hip = midpoint(p(s, L.LEFT_HIP), p(s, L.RIGHT_HIP));
   const torso = Math.max(distance(shoulder, hip), 1e-4);
   // PROPORTIONS.torso is 0.28 of standing height, so this recovers the figure's
-  // nominal height regardless of how folded the pose is.
+  // nominal height however folded the pose is.
   const unit = torso / 0.28;
 
   const earL = p(s, L.LEFT_EAR);
@@ -52,90 +89,151 @@ function metricsFor(s: LandmarkSet): Metrics {
   const visR = visibilityOf(s[L.RIGHT_EAR]);
   let headCentre: Point;
   if (visL > 0.3 && visR > 0.3) headCentre = midpoint(earL, earR);
-  else if (visL > visR) headCentre = earL;
-  else headCentre = earR;
-  // Nudge back from the visible ear toward the neck so a profile head sits right.
-  const neck = shoulder;
-  const pull = 0.18;
+  else headCentre = visL > visR ? earL : earR;
+
+  // The ear line sits slightly forward of the skull centre; pull back toward
+  // the neck so a profile head does not float off the shoulders.
   headCentre = {
-    x: headCentre.x + (neck.x - headCentre.x) * pull * 0.4,
-    y: headCentre.y + (neck.y - headCentre.y) * pull * 0.15,
+    x: headCentre.x + (shoulder.x - headCentre.x) * 0.1,
+    y: headCentre.y + (shoulder.y - headCentre.y) * 0.06,
   };
-  return { unit, headCentre, headRadius: unit * 0.082 };
+
+  return {
+    unit,
+    headCentre,
+    headRadius: unit * 0.069,
+    neckBase: {
+      x: shoulder.x + (headCentre.x - shoulder.x) * 0.82,
+      y: shoulder.y + (headCentre.y - shoulder.y) * 0.82,
+    },
+  };
 }
 
-/** Offsets a point perpendicular to a→b by `amount`. */
-function offsetPerp(a: Point, b: Point, at: Point, amount: number): Point {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const len = Math.hypot(dx, dy) || 1;
-  return { x: at.x + (-dy / len) * amount, y: at.y + (dx / len) * amount };
-}
-
+/** Torso as a rounded quad that blends into the shoulder and hip capsules. */
 function torsoPath(s: LandmarkSet, m: Metrics): string {
   const sl = p(s, L.LEFT_SHOULDER);
   const sr = p(s, L.RIGHT_SHOULDER);
   const hl = p(s, L.LEFT_HIP);
   const hr = p(s, L.RIGHT_HIP);
-  const grow = m.unit * 0.026;
   const shoulderCentre = midpoint(sl, sr);
   const hipCentre = midpoint(hl, hr);
+  const u = m.unit;
 
   const out = (from: Point, centre: Point, by: number): Point => {
     const dx = from.x - centre.x;
     const dy = from.y - centre.y;
-    const len = Math.hypot(dx, dy) || 1;
+    const len = Math.hypot(dx, dy);
+    if (len < 1e-6) return { x: from.x + by, y: from.y };
     return { x: from.x + (dx / len) * by, y: from.y + (dy / len) * by };
   };
 
-  const a = out(sl, shoulderCentre, grow);
-  const b = out(sr, shoulderCentre, grow);
-  const c = out(hr, hipCentre, grow * 0.9);
-  const d = out(hl, hipCentre, grow * 0.9);
+  const a = out(sl, shoulderCentre, u * 0.02);
+  const b = out(sr, shoulderCentre, u * 0.02);
+  const c = out(hr, hipCentre, u * 0.036);
+  const d = out(hl, hipCentre, u * 0.036);
 
-  // Slight waist pinch on both sides so the torso reads as a body.
-  const waistL = offsetPerp(a, d, midpoint(a, d), -m.unit * 0.012);
-  const waistR = offsetPerp(b, c, midpoint(b, c), m.unit * 0.012);
+  // Waist control points pull the sides in slightly, toward the body axis.
+  const waist = (p1: Point, p2: Point, sign: number): Point => {
+    const mid = midpoint(p1, p2);
+    const axis = midpoint(shoulderCentre, hipCentre);
+    const dx = axis.x - mid.x;
+    const dy = axis.y - mid.y;
+    const len = Math.hypot(dx, dy) || 1;
+    return { x: mid.x + (dx / len) * u * 0.02 * sign, y: mid.y + (dy / len) * u * 0.02 * sign };
+  };
 
   return [
-    `M${a.x.toFixed(4)},${a.y.toFixed(4)}`,
-    `L${b.x.toFixed(4)},${b.y.toFixed(4)}`,
-    `Q${waistR.x.toFixed(4)},${waistR.y.toFixed(4)} ${c.x.toFixed(4)},${c.y.toFixed(4)}`,
-    `L${d.x.toFixed(4)},${d.y.toFixed(4)}`,
-    `Q${waistL.x.toFixed(4)},${waistL.y.toFixed(4)} ${a.x.toFixed(4)},${a.y.toFixed(4)}`,
+    `M${n(a.x)},${n(a.y)}`,
+    `L${n(b.x)},${n(b.y)}`,
+    `Q${n(waist(b, c, 1).x)},${n(waist(b, c, 1).y)} ${n(c.x)},${n(c.y)}`,
+    `L${n(d.x)},${n(d.y)}`,
+    `Q${n(waist(d, a, 1).x)},${n(waist(d, a, 1).y)} ${n(a.x)},${n(a.y)}`,
     'Z',
   ].join(' ');
 }
 
-interface Limb {
-  a: Point;
-  b: Point;
-  w: number;
+/**
+ * Limb RADII as fractions of nominal body height, taken from ordinary adult
+ * proportions. Each chain tapers from the body outward, the way a real limb
+ * narrows toward the hand or foot.
+ */
+const W = {
+  shoulder: 0.026,
+  elbow: 0.02,
+  wrist: 0.013,
+  hand: 0.018,
+  hip: 0.046,
+  knee: 0.032,
+  calf: 0.03,
+  ankle: 0.019,
+  foot: 0.014,
+  neck: 0.032,
+} as const;
+
+/**
+ * The figure in draw order, back to front. Order is what makes a flat
+ * silhouette readable: legs sit behind the pelvis, arms sit in front of the
+ * torso, and only the parts that need to read against the body carry a
+ * hairline. Stroking everything turns the figure into a wireframe.
+ */
+interface Layers {
+  back: string[];
+  body: string[];
+  front: string[];
 }
 
-function limbsFor(s: LandmarkSet, m: Metrics): Limb[] {
+function bodyLayers(s: LandmarkSet, m: Metrics): Layers {
   const u = m.unit;
   const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
-  return [
-    { a: shoulder, b: m.headCentre, w: u * 0.05 },
-    { a: p(s, L.LEFT_SHOULDER), b: p(s, L.LEFT_ELBOW), w: u * 0.054 },
-    { a: p(s, L.LEFT_ELBOW), b: p(s, L.LEFT_WRIST), w: u * 0.042 },
-    { a: p(s, L.RIGHT_SHOULDER), b: p(s, L.RIGHT_ELBOW), w: u * 0.054 },
-    { a: p(s, L.RIGHT_ELBOW), b: p(s, L.RIGHT_WRIST), w: u * 0.042 },
-    { a: p(s, L.LEFT_HIP), b: p(s, L.LEFT_KNEE), w: u * 0.076 },
-    { a: p(s, L.LEFT_KNEE), b: p(s, L.LEFT_ANKLE), w: u * 0.052 },
-    { a: p(s, L.RIGHT_HIP), b: p(s, L.RIGHT_KNEE), w: u * 0.076 },
-    { a: p(s, L.RIGHT_KNEE), b: p(s, L.RIGHT_ANKLE), w: u * 0.052 },
-    { a: p(s, L.LEFT_ANKLE), b: p(s, L.LEFT_FOOT_INDEX), w: u * 0.038 },
-    { a: p(s, L.RIGHT_ANKLE), b: p(s, L.RIGHT_FOOT_INDEX), w: u * 0.038 },
-  ];
+
+  const cap = (a: Point, ra: number, b: Point, rb: number) =>
+    taperedCapsule(a, ra * u, b, rb * u);
+
+  const leg = (hip: number, knee: number, ankle: number, toe: number) => {
+    const k = p(s, knee);
+    const a = p(s, ankle);
+    const calf = lerp(k, a, 0.35);
+    return [
+      cap(p(s, hip), W.hip, k, W.knee),
+      cap(k, W.knee, calf, W.calf),
+      cap(calf, W.calf, a, W.ankle),
+      cap(a, W.ankle, p(s, toe), W.foot),
+    ];
+  };
+
+  const arm = (sh: number, el: number, wr: number, hand: number) => {
+    const e = p(s, el);
+    const w = p(s, wr);
+    return [
+      cap(p(s, sh), W.shoulder, e, W.elbow),
+      cap(e, W.elbow, w, W.wrist),
+      cap(w, W.wrist, p(s, hand), W.hand * 0.85),
+    ];
+  };
+
+  return {
+    back: [
+      ...leg(L.LEFT_HIP, L.LEFT_KNEE, L.LEFT_ANKLE, L.LEFT_FOOT_INDEX),
+      ...leg(L.RIGHT_HIP, L.RIGHT_KNEE, L.RIGHT_ANKLE, L.RIGHT_FOOT_INDEX),
+    ],
+    body: [
+      // Neck flares out of the shoulders rather than sitting on them as a pole.
+      cap(shoulder, W.neck * 1.5, m.neckBase, W.neck),
+      cap(p(s, L.LEFT_HIP), W.hip * 0.94, p(s, L.RIGHT_HIP), W.hip * 0.94),
+      torsoPath(s, m),
+    ],
+    front: [
+      ...arm(L.LEFT_SHOULDER, L.LEFT_ELBOW, L.LEFT_WRIST, L.LEFT_INDEX),
+      ...arm(L.RIGHT_SHOULDER, L.RIGHT_ELBOW, L.RIGHT_WRIST, L.RIGHT_INDEX),
+    ],
+  };
 }
 
 export function PoseSilhouette({
   skeletons,
   opacity = 1,
   fill = 'var(--silhouette-fill, #C7D3E2)',
-  outline,
+  shade = 'var(--silhouette-shade, #7A8CA6)',
   className,
   style,
   aspect = 3 / 4,
@@ -145,6 +243,7 @@ export function PoseSilhouette({
   const gid = useId().replace(/:/g, '');
   const height = 1;
   const width = aspect;
+  const paint = shaded ? `url(#g${gid})` : fill;
 
   return (
     <svg
@@ -157,67 +256,100 @@ export function PoseSilhouette({
     >
       {shaded && (
         <defs>
-          <linearGradient id={`g${gid}`} x1="0" y1="0" x2="0.35" y2="1">
-            <stop offset="0%" stopColor={fill} stopOpacity="1" />
-            <stop offset="100%" stopColor={fill} stopOpacity="0.72" />
+          {/* Both stops are fully opaque. A gradient that varies opacity makes
+              every overlapping limb visible through the torso. */}
+          {/* userSpaceOnUse, not the default objectBoundingBox: with per-shape
+              bounding boxes every limb gets its own gradient and the figure
+              renders as a patchwork of mismatched tones. */}
+          <linearGradient
+            id={`g${gid}`}
+            gradientUnits="userSpaceOnUse"
+            x1={width * 0.15}
+            y1={0}
+            x2={width * 0.95}
+            y2={height * 0.9}
+          >
+            <stop offset="0%" stopColor={fill} />
+            <stop offset="100%" stopColor={shade} />
           </linearGradient>
         </defs>
       )}
-      <g
-        opacity={opacity}
-        transform={mirrored ? `translate(${width} 0) scale(-1 1)` : undefined}
-      >
+      <g opacity={opacity} transform={mirrored ? `translate(${width} 0) scale(-1 1)` : undefined}>
         {skeletons.map((skeleton, si) => {
           // Skeletons are authored in a square 0..1 box; map x into the viewBox.
           const s = skeleton.map((q) => ({ ...q, x: q.x * width }));
           const m = metricsFor(s);
-          const limbs = limbsFor(s, m);
-          const paint = shaded ? `url(#g${gid})` : fill;
-          const handR = m.unit * 0.03;
+          const layers = bodyLayers(s, m);
+          const hairline = {
+            stroke: 'rgba(9, 15, 26, 0.22)',
+            strokeWidth: m.unit * 0.005,
+          };
           return (
-            <g key={si}>
-              {limbs.map((limb, i) => (
-                <line
-                  key={i}
-                  x1={limb.a.x}
-                  y1={limb.a.y}
-                  x2={limb.b.x}
-                  y2={limb.b.y}
-                  stroke={paint}
-                  strokeWidth={limb.w}
-                  strokeLinecap="round"
-                />
+            <g key={si} fill={paint}>
+              <g {...hairline}>
+                {layers.back.map((d, i) => (
+                  <path key={i} d={d} />
+                ))}
+              </g>
+              {layers.body.map((d, i) => (
+                <path key={i} d={d} />
               ))}
-              <path d={torsoPath(s, m)} fill={paint} />
-              <circle cx={p(s, L.LEFT_WRIST).x} cy={p(s, L.LEFT_WRIST).y} r={handR} fill={paint} />
-              <circle
-                cx={p(s, L.RIGHT_WRIST).x}
-                cy={p(s, L.RIGHT_WRIST).y}
-                r={handR}
-                fill={paint}
-              />
-              <ellipse
-                cx={m.headCentre.x}
-                cy={m.headCentre.y}
-                rx={m.headRadius * 0.86}
-                ry={m.headRadius}
-                fill={paint}
-              />
-              {outline && (
+              <g {...hairline}>
+                {layers.front.map((d, i) => (
+                  <path key={i} d={d} />
+                ))}
                 <ellipse
                   cx={m.headCentre.x}
                   cy={m.headCentre.y}
-                  rx={m.headRadius * 0.86}
+                  rx={m.headRadius * 0.84}
                   ry={m.headRadius}
-                  fill="none"
-                  stroke={outline}
-                  strokeWidth={m.unit * 0.006}
+                  transform={`rotate(${headTilt(s, m)} ${m.headCentre.x} ${m.headCentre.y})`}
+                  stroke="none"
                 />
-              )}
+                {facePlane(s, m)}
+              </g>
             </g>
           );
         })}
       </g>
     </svg>
   );
+}
+
+/**
+ * A small profile bump where the face is pointing.
+ *
+ * Without it a silhouette cannot say which way someone is facing, and facing is
+ * half of what a pose reference has to communicate. It is drawn in the same
+ * fill so it reads as part of the head rather than as a feature, and it comes
+ * from the nose landmark, so it flattens out as the subject turns away — which
+ * is itself the correct signal.
+ */
+function facePlane(s: LandmarkSet, m: Metrics): JSX.Element | null {
+  const nose = s[L.NOSE];
+  if (!nose || (nose.visibility ?? 1) < 0.4) return null;
+  const dx = nose.x - m.headCentre.x;
+  const dy = nose.y - m.headCentre.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 1e-6) return null;
+  const r = m.headRadius;
+  const reach = Math.min(len, r * 0.86);
+  return (
+    <ellipse
+      cx={m.headCentre.x + (dx / len) * reach}
+      cy={m.headCentre.y + (dy / len) * reach * 0.9}
+      rx={r * 0.28}
+      ry={r * 0.32}
+      stroke="none"
+    />
+  );
+}
+
+/** Aligns the head ellipse with the neck so a tilted head does not look bolted on. */
+function headTilt(s: LandmarkSet, m: Metrics): number {
+  const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
+  const dx = m.headCentre.x - shoulder.x;
+  const dy = m.headCentre.y - shoulder.y;
+  if (Math.hypot(dx, dy) < 1e-6) return 0;
+  return (Math.atan2(dy, dx) * 180) / Math.PI + 90;
 }

@@ -180,14 +180,19 @@ const ELEMENT_PHRASE: Partial<Record<EnvironmentElement, string>> = {
   ground: 'Down on the ground',
 };
 
+/**
+ * A highlight only earns its place when it says something specific about THIS
+ * pose in THIS situation. A line that could sit under any card is clutter (§32).
+ */
 function highlightFor(pose: ResolvedPose, reason: MatchReason): string {
   const required = pose.requiredElements.find((e) => reason.elements.includes(e));
   if (required && ELEMENT_PHRASE[required]) return ELEMENT_PHRASE[required]!;
   const el = reason.elements[0];
   if (el && ELEMENT_PHRASE[el]) return ELEMENT_PHRASE[el]!;
-  if (pose.difficulty === 'easy' && !reason.vibes.length) return 'Easy to nail';
-  if (reason.vibes.includes('candid')) return 'Reads as candid';
-  if (pose.difficulty === 'editorial') return 'Takes a few goes';
+  if (pose.requiredElements.length) {
+    const first = pose.requiredElements[0];
+    return ELEMENT_PHRASE[first] ?? '';
+  }
   return '';
 }
 

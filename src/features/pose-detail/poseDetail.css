@@ -1,7 +1,7 @@
 .detail__media {
   position: relative;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 4 / 5;
   background: var(--surface);
   overflow: hidden;
 }

@@ -57,7 +57,8 @@
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --dur: 180ms;
 
-  --silhouette-fill: #9fb2c9;
+  --silhouette-fill: #b3c4da;
+  --silhouette-shade: #6d7f99;
 
   /* Constrains the app to a phone-shaped column on wide screens. */
   --app-max: 480px;
