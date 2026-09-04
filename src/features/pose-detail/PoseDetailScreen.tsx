@@ -139,7 +139,6 @@ export function PoseDetailScreen() {
                   note={r.highlight}
                   isFavourite={favourites.includes(r.pose.id)}
                   onToggleFavourite={toggleFavourite}
-                  onSelect={() => update({ selectedPoseId: r.pose.id })}
                 />
               ))}
             </div>
@@ -158,7 +157,7 @@ export function PoseDetailScreen() {
           </Link>
           <button type="button" className="btn btn--primary" onClick={useThisPose}>
             <Icon name="camera" size={19} />
-            Use this pose
+            {session.selectedPoseId === pose.id ? 'Back to camera' : 'Use this pose'}
           </button>
         </div>
       </div>

@@ -96,12 +96,18 @@ export function DiscoverScreen() {
                 </div>
               )}
               <div className="resume__text">
-                <div className="eyebrow">Continue shooting</div>
+                <div className="eyebrow">
+                  {recoveredPose ? 'Continue shooting' : 'Pick up where you left off'}
+                </div>
                 <div style={{ fontSize: 15, fontWeight: 600, marginTop: 2 }}>
-                  {recoveredPose?.name ?? 'Unfinished shoot'}
+                  {recoveredPose?.name ?? describeSession(recovered, LABELS) ?? 'Your last shot'}
                 </div>
                 <div className="muted" style={{ fontSize: 12.5 }}>
-                  {describeSession(recovered, LABELS) || 'No filters set'}
+                  {recoveredPose
+                    ? describeSession(recovered, LABELS) || 'No filters set'
+                    : `${recovered.capturedPoseIds.length} ${
+                        recovered.capturedPoseIds.length === 1 ? 'photo' : 'photos'
+                      } taken`}
                 </div>
               </div>
             </div>
@@ -237,7 +243,6 @@ export function DiscoverScreen() {
                       note={r.highlight}
                       isFavourite={favourites.includes(r.pose.id)}
                       onToggleFavourite={toggleFavourite}
-                      onSelect={() => update({ selectedPoseId: r.pose.id })}
                     />
                   ))}
                 </div>

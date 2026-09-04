@@ -19,6 +19,8 @@ export interface VisionStats {
   fps: number;
   inferenceMs: number;
   detected: number;
+  /** Interval the loop has settled on, ms. Rises on slow devices. */
+  paceMs: number;
 }
 
 export interface UseVisionOptions {
@@ -29,6 +31,9 @@ export interface UseVisionOptions {
   /** Target analyses per second. 12 is a good balance on a modern iPhone. */
   targetHz?: number;
 }
+
+/** Never let the loop back off further than this; guidance must keep arriving. */
+const MAX_PACE_MS = 1200;
 
 const IDLE: GuidanceOutput = {
   stage: 'find',
@@ -52,8 +57,12 @@ export function useVisionGuidance({
   const peopleRef = useRef<LandmarkSet[]>([]);
   const rafRef = useRef(0);
   const lastRunRef = useRef(0);
-  const statsRef = useRef<VisionStats>({ fps: 0, inferenceMs: 0, detected: 0 });
+  const statsRef = useRef<VisionStats>({ fps: 0, inferenceMs: 0, detected: 0, paceMs: 0 });
   const frameTimesRef = useRef<number[]>([]);
+  const paceRef = useRef(0);
+  const inferEmaRef = useRef(0);
+  const warmedRef = useRef(0);
+  const [degraded, setDegraded] = useState(false);
 
   const [status, setStatus] = useState<DetectorStatus>('idle');
   const [guidance, setGuidance] = useState<GuidanceOutput>(IDLE);
@@ -102,7 +111,11 @@ export function useVisionGuidance({
       cancelAnimationFrame(rafRef.current);
       return;
     }
-    const interval = 1000 / targetHz;
+    const baseInterval = 1000 / targetHz;
+    paceRef.current = baseInterval;
+    inferEmaRef.current = 0;
+    warmedRef.current = 0;
+    setDegraded(false);
     let running = true;
 
     const loop = () => {
@@ -110,7 +123,7 @@ export function useVisionGuidance({
       rafRef.current = requestAnimationFrame(loop);
 
       const now = performance.now();
-      if (now - lastRunRef.current < interval) return;
+      if (now - lastRunRef.current < paceRef.current) return;
       lastRunRef.current = now;
 
       const detector = detectorRef.current;
@@ -122,6 +135,27 @@ export function useVisionGuidance({
       const result = detector.detect(video, now);
       if (!result) return;
 
+      /**
+       * Adaptive pacing (§56, §122). Inference runs on the main thread, so a
+       * device that takes 200ms per frame must not be asked for 12 a second —
+       * it would starve the interface and make the shutter feel dead. We track
+       * how long inference actually takes and leave most of the time free.
+       */
+      // The first inference includes model warm-up and is not representative,
+      // so it informs the average without being allowed to set the pace alone.
+      warmedRef.current = warmedRef.current + 1;
+      inferEmaRef.current =
+        warmedRef.current <= 1
+          ? Math.min(result.inferenceMs, MAX_PACE_MS)
+          : inferEmaRef.current * 0.7 + result.inferenceMs * 0.3;
+      // Capped: on a slow device guidance should get slower, not stop.
+      paceRef.current = Math.min(
+        MAX_PACE_MS,
+        Math.max(baseInterval, inferEmaRef.current * 1.9),
+      );
+      const slow = inferEmaRef.current > 320;
+      setDegraded((was) => (was === slow ? was : slow));
+
       // Frame-rate accounting for the debug overlay only.
       const times = frameTimesRef.current;
       times.push(now);
@@ -131,6 +165,7 @@ export function useVisionGuidance({
         fps: span > 0 ? ((times.length - 1) * 1000) / span : 0,
         inferenceMs: result.inferenceMs,
         detected: result.people.length,
+        paceMs: paceRef.current,
       };
 
       const people: LandmarkSet[] = [];
@@ -175,10 +210,20 @@ export function useVisionGuidance({
     [],
   );
 
+  // Landmarks are meaningless once the loop has stopped; clearing them keeps
+  // the alignment anchors from freezing on the last frame.
+  useEffect(() => {
+    if (!enabled) {
+      peopleRef.current = [];
+      smootherRef.current.reset();
+    }
+  }, [enabled]);
+
   return {
     status,
     guidance: enabled ? guidance : IDLE,
     stats,
+    degraded: enabled && degraded,
     peopleRef,
     error: detectorRef.current?.getError() ?? null,
   };

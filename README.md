@@ -15,8 +15,14 @@ npm install
 npm run dev      # development server
 npm run build    # production build into dist/
 npm run preview  # serve the production build
-npm test         # 149 tests, no browser required
+npm test         # 142 unit tests, no browser required
+npm run smoke    # 18 end-to-end checks against a served build
 ```
+
+`npm run smoke` needs the app already being served (`npm run preview`) and
+Playwright's Chromium. It covers what unit tests cannot: that the camera
+actually starts, the model loads from the bundled assets, capture produces a
+clean image, and Back keeps the user's context.
 
 The camera needs a secure context. `localhost` counts; anything else must be
 served over https.

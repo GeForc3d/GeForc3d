@@ -122,7 +122,6 @@ export function PoseLibraryScreen() {
                   selected={session.selectedPoseId === r.pose.id}
                   isFavourite={favourites.includes(r.pose.id)}
                   onToggleFavourite={toggleFavourite}
-                  onSelect={() => update({ selectedPoseId: r.pose.id })}
                 />
               ))}
             </div>

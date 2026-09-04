@@ -4,7 +4,6 @@ import { Header } from '@/components/Header';
 import { PoseCard } from '@/components/PoseCard';
 import { PoseRepository } from '@/data/poseRepository';
 import { routes } from '@/app/routes';
-import { useShotSession } from '@/app/ShotSessionContext';
 import { useSaved } from './savedStore';
 import '@/features/discover/discover.css';
 
@@ -18,7 +17,6 @@ const TABS: Array<{ id: Tab; label: string }> = [
 
 export function SavedScreen() {
   const { favourites, recentlyUsed, recentlyViewed, toggleFavourite } = useSaved();
-  const { update } = useShotSession();
   const [tab, setTab] = useState<Tab>('favourites');
 
   const ids = tab === 'favourites' ? favourites : tab === 'used' ? recentlyUsed : recentlyViewed;
@@ -60,7 +58,6 @@ export function SavedScreen() {
                   to={routes.pose(p!.id)}
                   isFavourite={favourites.includes(p!.id)}
                   onToggleFavourite={toggleFavourite}
-                  onSelect={() => update({ selectedPoseId: p!.id })}
                 />
               ))}
             </div>

@@ -48,7 +48,11 @@ export function CameraScreen() {
   const [showOpacity, setShowOpacity] = useState(false);
   const [capture, setCapture] = useState<Capture | null>(null);
   const [captureError, setCaptureError] = useState<string | null>(null);
-  const [debug, setDebug] = useState(false);
+  // Debug is off in the consumer interface (§77). It is reachable by keyboard
+  // through the visually-hidden control below, or by adding `debug` to the URL.
+  const [debug, setDebug] = useState(
+    () => typeof window !== 'undefined' && /(?:[?&#]|\b)debug\b/.test(window.location.href),
+  );
   const [pendingSetup, setPendingSetup] = useState<ShotSetupDraft | null>(null);
   const [alignHint, setAlignHint] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(true);
@@ -81,7 +85,7 @@ export function CameraScreen() {
   const { geometry, geometryRef } = useViewGeometry(stageRef, videoRef, mirrored);
 
   const guideActive = session.guideEnabled && state.status === 'live' && videoReady;
-  const { status: visionStatus, guidance, stats, peopleRef } = useVisionGuidance({
+  const { status: visionStatus, guidance, stats, degraded, peopleRef } = useVisionGuidance({
     enabled: guideActive,
     pose,
     videoRef,
@@ -220,7 +224,9 @@ export function CameraScreen() {
       ? 'Loading pose model…'
       : visionStatus === 'error'
         ? 'Live guidance unavailable. The manual guide still works.'
-        : null;
+        : degraded && !guidance.instruction && !guidance.hold
+          ? 'Guidance is running slowly on this device'
+          : null;
 
   const blocked = state.status === 'error' || environment.availability === 'embedded-blocked';
 
@@ -295,7 +301,8 @@ export function CameraScreen() {
 
         {debug && (
           <div className="debug">
-            {`fps ${stats.fps.toFixed(1)}  infer ${stats.inferenceMs.toFixed(1)}ms
+            {`fps ${stats.fps.toFixed(1)}  infer ${stats.inferenceMs.toFixed(1)}ms  pace ${stats.paceMs.toFixed(0)}ms
+guide ${guideActive ? 'on' : 'off'}${degraded ? ' DEGRADED' : ''}
 people ${stats.detected}  stage ${guidance.stage}${guidance.hold ? ' HOLD' : ''}
 video ${geometry.videoWidth}x${geometry.videoHeight}
 view  ${geometry.containerWidth}x${geometry.containerHeight}${geometry.mirrored ? ' mirrored' : ''}
