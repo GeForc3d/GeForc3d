@@ -1,0 +1,11 @@
+{
+  "name": "POSE",
+  "short_name": "POSE",
+  "description": "Find a pose that suits where you are, see what it should look like, then line it up through the camera.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05070B",
+  "theme_color": "#05070B",
+  "icons": []
+}

@@ -1,0 +1,121 @@
+.pose-render {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 80% at 50% 8%, rgba(41, 121, 255, 0.09), transparent 62%),
+    linear-gradient(178deg, var(--surface-2), var(--surface) 78%);
+}
+
+.pose-render svg {
+  width: 100%;
+  height: 100%;
+}
+
+.pose-render__badge {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+}
+
+/* ---------- Grid ---------- */
+
+.pose-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.pose-card {
+  position: relative;
+}
+
+.pose-card__link {
+  display: block;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+}
+
+.pose-card__media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+}
+
+.pose-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pose-card--on .pose-card__media {
+  border-color: var(--blue-line);
+  box-shadow: inset 0 0 0 1px var(--blue-line);
+}
+
+.pose-card__fav {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.pose-card__fav--on {
+  color: var(--blue-hi);
+}
+
+.pose-card__meta {
+  padding: var(--space-2) 2px 0;
+}
+
+.pose-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.pose-card__sub {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  letter-spacing: 0.01em;
+}
+
+.pose-card__note {
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: var(--blue-hi);
+}
+
+.pose-card__diff {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(5, 7, 11, 0.72);
+  color: var(--text-2);
+  backdrop-filter: blur(6px);
+}
+
+.pose-card__diff--editorial {
+  color: var(--blue-hi);
+}

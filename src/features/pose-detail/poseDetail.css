@@ -1,0 +1,122 @@
+.detail__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.detail__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail__fade {
+  position: absolute;
+  inset: auto 0 0;
+  height: 96px;
+  background: linear-gradient(180deg, transparent, var(--bg));
+  pointer-events: none;
+}
+
+.detail__head {
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.detail__name {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.detail__meta {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.detail__block {
+  padding: var(--space-5) var(--space-4) 0;
+}
+
+.detail__lead {
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+}
+
+.detail__tip {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+}
+
+.detail__tip svg {
+  flex: none;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.detail__tip-text {
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.detail__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.detail__list li {
+  display: flex;
+  gap: var(--space-3);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.detail__bullet {
+  flex: none;
+  width: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+  font-size: 12px;
+  padding-top: 2px;
+}
+
+.detail__req {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: 13px;
+  color: var(--warn);
+}
+
+.detail__actions {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) calc(var(--space-3) + var(--safe-bottom));
+  background: linear-gradient(180deg, rgba(5, 7, 11, 0), var(--bg) 32%);
+  z-index: 10;
+}
+
+.detail__actions .btn--primary {
+  flex: 1;
+}
+
+.detail__related {
+  padding: var(--space-6) var(--space-4) 0;
+}

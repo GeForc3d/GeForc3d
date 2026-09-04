@@ -1,0 +1,70 @@
+/*
+ * POSE design tokens.
+ *
+ * Black / charcoal / blue. Photography carries the identity; the interface
+ * stays out of the way. Blue is an accent, never wallpaper.
+ */
+:root {
+  --bg: #05070b;
+  --surface: #0c1118;
+  --surface-2: #121923;
+  --surface-3: #18212d;
+  --hairline: #202a37;
+  --hairline-strong: #2c384a;
+
+  --text: #f2f5f8;
+  --text-2: #8994a3;
+  --text-3: #626d7c;
+
+  /* Accent blue for strokes, icons and selected state. */
+  --blue: #2979ff;
+  --blue-hi: #5a9bff;
+  /* Deeper blue used behind white label text so contrast clears 4.5:1. */
+  --blue-strong: #1f63e0;
+  --blue-dim: rgba(41, 121, 255, 0.14);
+  --blue-line: rgba(41, 121, 255, 0.4);
+
+  --danger: #ff5a52;
+  --warn: #ffb020;
+  --good: #35d07f;
+
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  --font: -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+
+  --tap: 44px;
+  --nav-h: 56px;
+  --header-h: 52px;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur: 180ms;
+
+  --silhouette-fill: #9fb2c9;
+
+  /* Constrains the app to a phone-shaped column on wide screens. */
+  --app-max: 480px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur: 0ms;
+  }
+}

@@ -1,0 +1,214 @@
+.discover__brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: calc(var(--safe-top) + var(--space-5)) var(--space-4) var(--space-4);
+}
+
+.discover__wordmark {
+  font-family: var(--font-display);
+  font-size: 26px;
+  letter-spacing: 0.16em;
+  font-weight: 500;
+}
+
+.discover__count {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.discover__prompt {
+  padding: 0 var(--space-4);
+  font-size: 22px;
+  line-height: 1.22;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.discover__sub {
+  padding: var(--space-2) var(--space-4) 0;
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.45;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-4) var(--space-4) 0;
+  padding: 0 var(--space-3);
+  min-height: 50px;
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  background: var(--surface);
+  transition: border-color var(--dur) var(--ease);
+}
+
+.search:focus-within {
+  border-color: var(--blue-line);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: none;
+  font-size: 16px; /* keeps iOS Safari from zooming on focus */
+  color: var(--text);
+}
+
+.search input::placeholder {
+  color: var(--text-3);
+}
+
+.search__go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--blue-strong);
+  color: #fff;
+}
+
+.search__go:disabled {
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+
+.section {
+  padding: var(--space-6) var(--space-4) 0;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.section__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue-hi);
+}
+
+.scene-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.scene-tile {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: 74px;
+  padding: var(--space-3);
+  border-radius: var(--radius);
+  border: 1px solid var(--hairline);
+  background: linear-gradient(160deg, var(--surface-2), var(--surface) 88%);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow: hidden;
+  transition: border-color var(--dur) var(--ease);
+}
+
+.scene-tile--on {
+  border-color: var(--blue-line);
+  background: linear-gradient(160deg, rgba(41, 121, 255, 0.16), var(--surface) 88%);
+}
+
+.scene-tile__mark {
+  position: absolute;
+  right: -12px;
+  top: -14px;
+  width: 62px;
+  height: 62px;
+  opacity: 0.13;
+  color: var(--blue-hi);
+}
+
+.resume {
+  margin: var(--space-4) var(--space-4) 0;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  background: linear-gradient(150deg, rgba(41, 121, 255, 0.1), var(--surface) 70%);
+  overflow: hidden;
+}
+
+.resume__body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.resume__thumb {
+  position: relative;
+  width: 56px;
+  height: 74px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+}
+
+.resume__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resume__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.resume__actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+
+.resume__actions .btn {
+  flex: 1;
+  min-height: 40px;
+  font-size: 14px;
+}
+
+.results-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-4) var(--space-3);
+}
+
+.empty {
+  margin: var(--space-6) var(--space-4);
+  padding: var(--space-5);
+  border: 1px dashed var(--hairline-strong);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.empty__title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.empty__body {
+  font-size: 13.5px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
