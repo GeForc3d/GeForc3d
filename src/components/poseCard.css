@@ -1,5 +1,4 @@
-/* The reference always fills the frame it is given, whether it is a photograph
-   or the procedural render standing in for one. */
+/* The reference fills whatever frame it is given, photograph or render. */
 .pose-ref {
   position: absolute;
   inset: 0;
@@ -19,8 +18,8 @@
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(120% 80% at 50% 8%, rgba(41, 121, 255, 0.09), transparent 62%),
-    linear-gradient(178deg, var(--surface-2), var(--surface) 78%);
+    radial-gradient(130% 85% at 50% 4%, rgba(41, 121, 255, 0.1), transparent 64%),
+    linear-gradient(176deg, #16202c, #0b1017 82%);
 }
 
 .pose-render svg {
@@ -39,7 +38,7 @@
 .pose-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: var(--space-3);
+  gap: var(--space-3) var(--space-3);
 }
 
 .pose-card {
@@ -59,32 +58,23 @@
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--surface-2);
-  border: 1px solid var(--hairline);
-}
-
-.pose-card__media img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 
 .pose-card--on .pose-card__media {
-  border-color: var(--blue-line);
-  box-shadow: inset 0 0 0 1px var(--blue-line);
+  box-shadow: inset 0 0 0 2px var(--blue);
 }
 
 .pose-card__fav {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 36px;
-  height: 36px;
+  top: 2px;
+  right: 2px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-sm);
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.72);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
 }
 
 .pose-card__fav--on {
@@ -92,44 +82,69 @@
 }
 
 .pose-card__meta {
-  padding: var(--space-2) 2px 0;
+  padding: 7px 2px 0;
 }
 
 .pose-card__name {
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
+  letter-spacing: -0.012em;
+  line-height: 1.2;
 }
 
 .pose-card__sub {
   margin-top: 2px;
   font-size: 11.5px;
   color: var(--text-2);
-  letter-spacing: 0.01em;
-}
-
-.pose-card__note {
-  margin-top: 2px;
-  font-size: 11.5px;
-  color: var(--blue-hi);
+  line-height: 1.3;
 }
 
 .pose-card__diff {
   position: absolute;
   left: 8px;
   top: 8px;
-  padding: 2px 6px;
+  padding: 3px 7px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  background: rgba(5, 7, 11, 0.72);
-  color: var(--text-2);
+  background: rgba(5, 7, 11, 0.66);
+  color: var(--blue-hi);
   backdrop-filter: blur(6px);
 }
 
-.pose-card__diff--editorial {
-  color: var(--blue-hi);
+/* ---------- Representation switcher ---------- */
+
+.rep-switch {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px var(--space-4);
+  margin: 0 calc(var(--space-4) * -1);
+  scroll-padding-inline: var(--space-4);
+}
+
+.rep-switch::-webkit-scrollbar {
+  display: none;
+}
+
+.rep-switch__item {
+  flex: none;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rep-switch__item--on {
+  border-color: var(--blue-line);
+  background: var(--blue-dim);
+  color: var(--text);
 }

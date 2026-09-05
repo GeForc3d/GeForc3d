@@ -153,14 +153,62 @@ const hipAngle = (pts: LandmarkSet, side: Side) =>
   safeJoint(pts, hipOf(side), shoulderOf(side), kneeOf(side));
 
 /**
+ * The widest shoulder-to-torso ratio observed for the current subject.
+ *
+ * Torso yaw is read from how much of the shoulder width is still projected, but
+ * that ratio depends on build as much as on rotation: broad shoulders read as
+ * "less turned" and narrow shoulders as "more turned" against a fixed
+ * assumption. Calibrating on the subject in front of the camera removes their
+ * build from the estimate entirely, which is what stops a person being coached
+ * differently for having a different body (§9).
+ */
+export class SubjectShapeCalibration {
+  /** Canonical ratio, used until the subject has been observed. */
+  private ratio = NOMINAL_SHOULDER_RATIO;
+  private observed = false;
+
+  observe(pts: LandmarkSet): void {
+    const sl = pts[L.LEFT_SHOULDER];
+    const sr = pts[L.RIGHT_SHOULDER];
+    const hl = pts[L.LEFT_HIP];
+    const hr = pts[L.RIGHT_HIP];
+    if (!sl || !sr || !hl || !hr) return;
+    if (Math.min(visibilityOf(sl), visibilityOf(sr)) < 0.6) return;
+    const torso = distance(midpoint(sl, sr), midpoint(hl, hr));
+    if (torso < 1e-5) return;
+    const ratio = distance(sl, sr) / torso;
+    if (!Number.isFinite(ratio) || ratio <= 0) return;
+    // The widest projection seen is the closest this subject has come to
+    // square-on, which is the only reading that reflects their build alone.
+    if (!this.observed || ratio > this.ratio) {
+      this.ratio = ratio;
+      this.observed = true;
+    }
+  }
+
+  get(): number {
+    return this.ratio;
+  }
+
+  reset(): void {
+    this.ratio = NOMINAL_SHOULDER_RATIO;
+    this.observed = false;
+  }
+}
+
+/** Shoulder width over torso length for the canonical figure. */
+export const NOMINAL_SHOULDER_RATIO = 0.2 / 0.28;
+
+/**
  * Estimates torso yaw from the projected shoulder width. A front-on torso
  * projects its full shoulder width; a profile projects almost none. The
- * shoulder-width-to-torso-length ratio removes body scale but not body build,
- * so the estimate is deliberately coarse and reported with a confidence.
+ * reference ratio is the subject's own when one has been observed, so build
+ * does not masquerade as rotation.
  */
 export function estimateTorsoYaw(
   pts: LandmarkSet,
   world?: LandmarkSet,
+  shoulderRatio = NOMINAL_SHOULDER_RATIO,
 ): { yawDeg: number; confidence: number } {
   const sl = pts[L.LEFT_SHOULDER];
   const sr = pts[L.RIGHT_SHOULDER];
@@ -189,8 +237,7 @@ export function estimateTorsoYaw(
   const shoulderSpan = distance(sl, sr);
   const torso = distance(midpoint(sl, sr), midpoint(hl, hr));
   if (torso < 1e-6) return { yawDeg: 0, confidence: 0 };
-  const NOMINAL = 0.2 / 0.28; // shoulderWidth / torso from PROPORTIONS
-  const ratio = Math.min(1, shoulderSpan / torso / NOMINAL);
+  const ratio = Math.min(1, shoulderSpan / torso / Math.max(shoulderRatio, 1e-6));
   const magnitude = (Math.acos(ratio) * 180) / Math.PI;
 
   // The sign is recovered from the face: a head turned toward the subject's own
@@ -322,7 +369,11 @@ export const ALL_BODY_INDICES: readonly number[] = [
   L.RIGHT_ANKLE,
 ];
 
-export function extractFeatures(pts: LandmarkSet, world?: LandmarkSet): PoseFeatures {
+export function extractFeatures(
+  pts: LandmarkSet,
+  world?: LandmarkSet,
+  shoulderRatio = NOMINAL_SHOULDER_RATIO,
+): PoseFeatures {
   const sl = pts[L.LEFT_SHOULDER];
   const sr = pts[L.RIGHT_SHOULDER];
   const hl = pts[L.LEFT_HIP];
@@ -336,7 +387,7 @@ export function extractFeatures(pts: LandmarkSet, world?: LandmarkSet): PoseFeat
   // in image angle terms, so a positive result means leaning to image right.
   const torsoLeanDeg = sl && sr && hl && hr ? vectorAngle(hipCentre, shoulderCentre) + 90 : 0;
 
-  const yaw = estimateTorsoYaw(pts, world);
+  const yaw = estimateTorsoYaw(pts, world, shoulderRatio);
   const head = estimateHeadYaw(pts);
   const pitch = estimateHeadPitch(pts);
 
@@ -364,7 +415,12 @@ export function extractFeatures(pts: LandmarkSet, world?: LandmarkSet): PoseFeat
     hipTiltDeg,
     shoulderTiltDeg,
     hipShift,
-    headYawDeg: head.yawDeg - yaw.yawDeg * (yaw.confidence > 0.4 ? 1 : 0),
+    // Absolute head yaw in the image, NOT torso-relative. Subtracting the
+    // torso estimate only when it happened to be confident put the measurement
+    // in a different space from the target depending on the frame. Head is
+    // evaluated after the torso already matches, so absolute is the right
+    // comparison and it is stable.
+    headYawDeg: head.yawDeg,
     headYawConfidence: Math.min(head.confidence, 0.75),
     headPitchDeg: pitch.pitchDeg,
     headPitchConfidence: pitch.confidence,

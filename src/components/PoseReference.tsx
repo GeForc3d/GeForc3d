@@ -1,35 +1,41 @@
 import { useState } from 'react';
-import type { ResolvedPose } from '@/models/pose';
+import type { Pose, ResolvedPose } from '@/models/pose';
+import type { PoseRepresentation, RepresentationType } from '@/models/representation';
+import { BODY_PROPORTIONS } from '@/models/representation';
 import { reportBrokenAsset } from '@/data/assetManifest';
+import { representationOf } from '@/data/poseRepository';
 import { PoseSilhouette, type GroundHint } from './PoseSilhouette';
-import type { Pose } from '@/models/pose';
 
 interface Props {
   pose: ResolvedPose;
+  /** Which body to show. Callers resolve this from the user's preference. */
+  representation: RepresentationType;
   kind?: 'preview' | 'overlay';
   className?: string;
-  /** Shows the development-reference badge. Off for the camera overlay. */
   showBadge?: boolean;
   aspect?: number;
+  mirrored?: boolean;
 }
 
 /**
- * The human reference for a pose.
+ * The human reference for a pose, on a chosen body.
  *
- * Uses real photography when the asset manifest supplies it. Until then it
- * renders the pose's own target skeleton as an anatomical silhouette and says
- * plainly that it is a development reference (§34, §35). It never shows a
- * broken image: a declared asset that fails to load falls back to the render
- * and is recorded for the dev asset report (§36).
+ * Uses photography as soon as the asset manifest supplies it, per pose and per
+ * representation. Until then it renders the development figure and says so.
+ * A declared asset that fails to load never shows a broken image: it falls back
+ * to the render and is recorded for the asset report (§36).
  */
 export function PoseReference({
   pose,
+  representation,
   kind = 'preview',
   className,
   showBadge = true,
   aspect = 3 / 4,
+  mirrored = false,
 }: Props) {
-  const src = kind === 'preview' ? pose.assets.previewImage : pose.assets.overlayImage;
+  const rep = representationOf(pose, representation);
+  const src = kind === 'preview' ? rep.previewImage : rep.overlayImage;
   const [failed, setFailed] = useState(false);
   const usingPhoto = Boolean(src) && !failed;
 
@@ -38,7 +44,7 @@ export function PoseReference({
       <img
         className={['pose-ref', 'pose-ref--photo', className].filter(Boolean).join(' ')}
         src={src!}
-        alt={`${pose.name} reference`}
+        alt={`${pose.name} demonstrated by a ${rep.representationType} figure`}
         loading="lazy"
         decoding="async"
         onError={() => {
@@ -53,9 +59,12 @@ export function PoseReference({
     <div className={['pose-ref', className].filter(Boolean).join(' ')}>
       <div className="pose-render">
         <PoseSilhouette
-          skeletons={pose.targetSkeletons}
+          skeletons={rep.targetSkeletons}
           aspect={aspect}
           ground={groundFor(pose)}
+          mass={BODY_PROPORTIONS[rep.representationType].mass}
+          backSide={backSideFor(pose)}
+          mirrored={mirrored}
         />
       </div>
       {showBadge && (
@@ -67,7 +76,7 @@ export function PoseReference({
   );
 }
 
-/** What the pose is resting on, from its own body position and rig lean. */
+/** What the pose is resting on, from its body position and rig lean. */
 export function groundFor(pose: Pose): GroundHint {
   switch (pose.bodyPosition) {
     case 'sitting':
@@ -75,8 +84,6 @@ export function groundFor(pose: Pose): GroundHint {
     case 'lying':
       return 'floor';
     case 'leaning': {
-      // A railing is a horizontal line the subject rests on; a wall is a
-      // vertical surface beside them. Drawing one as the other misleads.
       if (pose.requiredElements.includes('railing')) return 'rail';
       const lean = pose.targetSubjects[0]?.rig.leanDeg ?? 0;
       if (Math.abs(lean) < 3) return 'none';
@@ -86,3 +93,19 @@ export function groundFor(pose: Pose): GroundHint {
       return 'none';
   }
 }
+
+/**
+ * Which of the subject's own sides is turned away from the camera, so those
+ * limbs can be drawn behind the body. A subject turning toward their own left
+ * (positive yaw) sends their left side away.
+ */
+export function backSideFor(pose: Pose): 'left' | 'right' | null {
+  const raw = pose.targetSubjects[0]?.rig.yawDeg ?? 0;
+  const yaw = ((raw + 180) % 360) - 180;
+  const folded = Math.abs(yaw) > 90 ? (yaw > 0 ? yaw - 180 : yaw + 180) : yaw;
+  if (folded > 14) return 'left';
+  if (folded < -14) return 'right';
+  return null;
+}
+
+export type { PoseRepresentation };

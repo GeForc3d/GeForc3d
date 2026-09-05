@@ -5,7 +5,12 @@ import {
 } from '@/models/landmarks';
 import type { JointTargets, Pose } from '@/models/pose';
 import type { Deviation } from '@/guidance/types';
-import { extractFeatures, groupVisibility, type PoseFeatures } from './features';
+import {
+  extractFeatures,
+  groupVisibility,
+  NOMINAL_SHOULDER_RATIO,
+  type PoseFeatures,
+} from './features';
 
 /**
  * Turns the gap between what the camera sees and what the pose asks for into a
@@ -25,6 +30,11 @@ export interface MatchInput {
   frameLandmarks: LandmarkSet;
   /** Optional 3D world landmarks, which make torso yaw far more reliable. */
   worldLandmarks?: LandmarkSet;
+  /**
+   * The subject's own shoulder-to-torso ratio, once observed. Supplying it
+   * keeps build out of the yaw estimate (§9).
+   */
+  shoulderRatio?: number;
 }
 
 export interface MatchResult {
@@ -90,8 +100,13 @@ function jointConfidence(pts: LandmarkSet, key: JointKey): number {
   return groupVisibility(pts, [group[0] + offset, group[1] + offset, group[2] + offset]);
 }
 
-export function matchPose({ pose, frameLandmarks, worldLandmarks }: MatchInput): MatchResult {
-  const features = extractFeatures(frameLandmarks, worldLandmarks);
+export function matchPose({
+  pose,
+  frameLandmarks,
+  worldLandmarks,
+  shoulderRatio = NOMINAL_SHOULDER_RATIO,
+}: MatchInput): MatchResult {
+  const features = extractFeatures(frameLandmarks, worldLandmarks, shoulderRatio);
   const deviations: Deviation[] = [];
 
   // ---- FIND: does the pose have the body parts it needs to be judged? ----

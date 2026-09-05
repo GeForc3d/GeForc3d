@@ -3,24 +3,21 @@ import { L, type LandmarkSet } from '@/models/landmarks';
 import { distance, midpoint, visibilityOf, type Point } from '@/pose-matching/features';
 
 /**
- * Renders a human silhouette from a target skeleton.
+ * Draws a human form from a target skeleton.
  *
- * This is the DEVELOPMENT reference standing in for photography that has not
- * been shot (§35). It is drawn from the pose's real joint data at real human
- * proportions, so it communicates body shape, placement and framing — which is
- * exactly what the transparent camera guide needs. It is not a photograph, and
- * every surface that shows it says so.
+ * This is a DEVELOPMENT reference standing in for photography that has not been
+ * shot. Its job is to make a pose readable in about a second, so it is drawn as
+ * one continuous body rather than as jointed segments: no outlines at the
+ * joints, no capsule ends showing, no visible articulation. Depth comes from
+ * two flat tones — the limbs on the far side of the body sit behind in a darker
+ * tone — which is how a figure reads without looking mechanical.
  *
- * Limbs are tapered capsules rather than round-capped strokes: a constant-width
- * stroke leaves a visible ball at every joint and the figure reads as a
- * mannequin. Everything is drawn opaque inside one group so group opacity
- * composites cleanly instead of showing translucent seams.
+ * Two variants:
+ *   reference — two-tone with a surface mark, for cards and pose detail.
+ *   overlay   — one flat tone, no surface, for laying over the live camera,
+ *               where the real scene supplies everything else (§26).
  */
 
-/**
- * A hint at what the body is resting on. A seated figure drawn in mid-air reads
- * as falling; one line at the seat edge makes it read as sitting.
- */
 export type GroundHint = 'none' | 'seat' | 'floor' | 'rail' | 'wall-left' | 'wall-right';
 
 interface Props {
@@ -28,24 +25,34 @@ interface Props {
   ground?: GroundHint;
   opacity?: number;
   fill?: string;
-  /** Shade colour for the far side of the figure. Must be fully opaque. */
   shade?: string;
   className?: string;
   style?: CSSProperties;
-  /** Rendered aspect ratio of the viewBox (width / height). */
   aspect?: number;
   mirrored?: boolean;
-  /** Adds a soft tonal gradient so the figure reads as a body, not a sticker. */
-  shaded?: boolean;
+  variant?: 'reference' | 'overlay';
+  /**
+   * Scale the figure to fill the frame. Card and detail thumbnails want this;
+   * the camera overlay must not, because there the skeleton's placement in the
+   * frame IS the composition the photographer is being asked to match.
+   */
+  fit?: boolean;
+  /** Silhouette thickness multiplier from the body representation. */
+  mass?: number;
+  /**
+   * Which of the subject's own sides is turned away from the camera. Those
+   * limbs are drawn behind the torso so the pose reads three-dimensionally.
+   */
+  backSide?: 'left' | 'right' | null;
 }
 
 const p = (s: LandmarkSet, i: number): Point => s[i] ?? { x: 0.5, y: 0.5 };
+const n = (v: number) => v.toFixed(4);
 
 const lerp = (a: Point, b: Point, t: number): Point => ({
   x: a.x + (b.x - a.x) * t,
   y: a.y + (b.y - a.y) * t,
 });
-const n = (v: number) => v.toFixed(4);
 
 /** Outline of a cone between two circles: two tangents and two arcs. */
 function taperedCapsule(a: Point, ra: number, b: Point, rb: number): string {
@@ -59,12 +66,10 @@ function taperedCapsule(a: Point, ra: number, b: Point, rb: number): string {
   }
   const theta = Math.atan2(dy, dx);
   const phi = Math.acos((ra - rb) / d);
-
   const a1 = { x: a.x + ra * Math.cos(theta + phi), y: a.y + ra * Math.sin(theta + phi) };
   const b1 = { x: b.x + rb * Math.cos(theta + phi), y: b.y + rb * Math.sin(theta + phi) };
   const b2 = { x: b.x + rb * Math.cos(theta - phi), y: b.y + rb * Math.sin(theta - phi) };
   const a2 = { x: a.x + ra * Math.cos(theta - phi), y: a.y + ra * Math.sin(theta - phi) };
-
   return [
     `M${n(a1.x)},${n(a1.y)}`,
     `L${n(b1.x)},${n(b1.y)}`,
@@ -77,29 +82,23 @@ function taperedCapsule(a: Point, ra: number, b: Point, rb: number): string {
 
 interface Metrics {
   unit: number;
+  mass: number;
   headCentre: Point;
   headRadius: number;
   neckBase: Point;
 }
 
-function metricsFor(s: LandmarkSet): Metrics {
+function metricsFor(s: LandmarkSet, mass: number): Metrics {
   const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
   const hip = midpoint(p(s, L.LEFT_HIP), p(s, L.RIGHT_HIP));
   const torso = Math.max(distance(shoulder, hip), 1e-4);
-  // PROPORTIONS.torso is 0.28 of standing height, so this recovers the figure's
-  // nominal height however folded the pose is.
   const unit = torso / 0.28;
 
   const earL = p(s, L.LEFT_EAR);
   const earR = p(s, L.RIGHT_EAR);
   const visL = visibilityOf(s[L.LEFT_EAR]);
   const visR = visibilityOf(s[L.RIGHT_EAR]);
-  let headCentre: Point;
-  if (visL > 0.3 && visR > 0.3) headCentre = midpoint(earL, earR);
-  else headCentre = visL > visR ? earL : earR;
-
-  // The ear line sits slightly forward of the skull centre; pull back toward
-  // the neck so a profile head does not float off the shoulders.
+  let headCentre = visL > 0.3 && visR > 0.3 ? midpoint(earL, earR) : visL > visR ? earL : earR;
   headCentre = {
     x: headCentre.x + (shoulder.x - headCentre.x) * 0.1,
     y: headCentre.y + (shoulder.y - headCentre.y) * 0.06,
@@ -107,16 +106,14 @@ function metricsFor(s: LandmarkSet): Metrics {
 
   return {
     unit,
+    mass,
     headCentre,
     headRadius: unit * 0.069,
-    neckBase: {
-      x: shoulder.x + (headCentre.x - shoulder.x) * 0.82,
-      y: shoulder.y + (headCentre.y - shoulder.y) * 0.82,
-    },
+    neckBase: lerp(shoulder, headCentre, 0.82),
   };
 }
 
-/** Torso as a rounded quad that blends into the shoulder and hip capsules. */
+/** Torso as one rounded mass that blends into the shoulders and hips. */
 function torsoPath(s: LandmarkSet, m: Metrics): string {
   const sl = p(s, L.LEFT_SHOULDER);
   const sr = p(s, L.RIGHT_SHOULDER);
@@ -124,7 +121,7 @@ function torsoPath(s: LandmarkSet, m: Metrics): string {
   const hr = p(s, L.RIGHT_HIP);
   const shoulderCentre = midpoint(sl, sr);
   const hipCentre = midpoint(hl, hr);
-  const u = m.unit;
+  const u = m.unit * m.mass;
 
   const out = (from: Point, centre: Point, by: number): Point => {
     const dx = from.x - centre.x;
@@ -134,36 +131,33 @@ function torsoPath(s: LandmarkSet, m: Metrics): string {
     return { x: from.x + (dx / len) * by, y: from.y + (dy / len) * by };
   };
 
-  const a = out(sl, shoulderCentre, u * 0.02);
-  const b = out(sr, shoulderCentre, u * 0.02);
-  const c = out(hr, hipCentre, u * 0.036);
-  const d = out(hl, hipCentre, u * 0.036);
+  const a = out(sl, shoulderCentre, u * 0.022);
+  const b = out(sr, shoulderCentre, u * 0.022);
+  const c = out(hr, hipCentre, u * 0.038);
+  const d = out(hl, hipCentre, u * 0.038);
 
-  // Waist control points pull the sides in slightly, toward the body axis.
-  const waist = (p1: Point, p2: Point, sign: number): Point => {
+  const waist = (p1: Point, p2: Point): Point => {
     const mid = midpoint(p1, p2);
     const axis = midpoint(shoulderCentre, hipCentre);
     const dx = axis.x - mid.x;
     const dy = axis.y - mid.y;
     const len = Math.hypot(dx, dy) || 1;
-    return { x: mid.x + (dx / len) * u * 0.02 * sign, y: mid.y + (dy / len) * u * 0.02 * sign };
+    return { x: mid.x + (dx / len) * u * 0.018, y: mid.y + (dy / len) * u * 0.018 };
   };
 
+  const wR = waist(b, c);
+  const wL = waist(d, a);
   return [
     `M${n(a.x)},${n(a.y)}`,
     `L${n(b.x)},${n(b.y)}`,
-    `Q${n(waist(b, c, 1).x)},${n(waist(b, c, 1).y)} ${n(c.x)},${n(c.y)}`,
+    `Q${n(wR.x)},${n(wR.y)} ${n(c.x)},${n(c.y)}`,
     `L${n(d.x)},${n(d.y)}`,
-    `Q${n(waist(d, a, 1).x)},${n(waist(d, a, 1).y)} ${n(a.x)},${n(a.y)}`,
+    `Q${n(wL.x)},${n(wL.y)} ${n(a.x)},${n(a.y)}`,
     'Z',
   ].join(' ');
 }
 
-/**
- * Limb RADII as fractions of nominal body height, taken from ordinary adult
- * proportions. Each chain tapers from the body outward, the way a real limb
- * narrows toward the hand or foot.
- */
+/** Limb radii as fractions of nominal body height, from adult proportions. */
 const W = {
   shoulder: 0.026,
   elbow: 0.02,
@@ -177,81 +171,67 @@ const W = {
   neck: 0.032,
 } as const;
 
-/**
- * The figure in draw order, back to front. Order is what makes a flat
- * silhouette readable: legs sit behind the pelvis, arms sit in front of the
- * torso, and only the parts that need to read against the body carry a
- * hairline. Stroking everything turns the figure into a wireframe.
- */
-interface Layers {
-  back: string[];
-  body: string[];
-  front: string[];
-}
-
-function bodyLayers(s: LandmarkSet, m: Metrics): Layers {
-  const u = m.unit;
-  const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
-
+function limbPaths(s: LandmarkSet, m: Metrics, side: 'left' | 'right'): string[] {
+  const u = m.unit * m.mass;
   const cap = (a: Point, ra: number, b: Point, rb: number) =>
     taperedCapsule(a, ra * u, b, rb * u);
 
-  const leg = (hip: number, knee: number, ankle: number, toe: number) => {
-    const k = p(s, knee);
-    const a = p(s, ankle);
-    const calf = lerp(k, a, 0.35);
-    return [
-      cap(p(s, hip), W.hip, k, W.knee),
-      cap(k, W.knee, calf, W.calf),
-      cap(calf, W.calf, a, W.ankle),
-      cap(a, W.ankle, p(s, toe), W.foot),
-    ];
-  };
+  const sh = side === 'left' ? L.LEFT_SHOULDER : L.RIGHT_SHOULDER;
+  const el = side === 'left' ? L.LEFT_ELBOW : L.RIGHT_ELBOW;
+  const wr = side === 'left' ? L.LEFT_WRIST : L.RIGHT_WRIST;
+  const hand = side === 'left' ? L.LEFT_INDEX : L.RIGHT_INDEX;
+  const hip = side === 'left' ? L.LEFT_HIP : L.RIGHT_HIP;
+  const kn = side === 'left' ? L.LEFT_KNEE : L.RIGHT_KNEE;
+  const an = side === 'left' ? L.LEFT_ANKLE : L.RIGHT_ANKLE;
+  const toe = side === 'left' ? L.LEFT_FOOT_INDEX : L.RIGHT_FOOT_INDEX;
 
-  const arm = (sh: number, el: number, wr: number, hand: number) => {
-    const e = p(s, el);
-    const w = p(s, wr);
-    return [
-      cap(p(s, sh), W.shoulder, e, W.elbow),
-      cap(e, W.elbow, w, W.wrist),
-      cap(w, W.wrist, p(s, hand), W.hand * 0.85),
-    ];
-  };
+  const k = p(s, kn);
+  const a = p(s, an);
+  const calf = lerp(k, a, 0.35);
 
-  return {
-    back: [
-      ...leg(L.LEFT_HIP, L.LEFT_KNEE, L.LEFT_ANKLE, L.LEFT_FOOT_INDEX),
-      ...leg(L.RIGHT_HIP, L.RIGHT_KNEE, L.RIGHT_ANKLE, L.RIGHT_FOOT_INDEX),
-    ],
-    body: [
-      // Neck flares out of the shoulders rather than sitting on them as a pole.
-      cap(shoulder, W.neck * 1.5, m.neckBase, W.neck),
-      cap(p(s, L.LEFT_HIP), W.hip * 0.94, p(s, L.RIGHT_HIP), W.hip * 0.94),
-      torsoPath(s, m),
-    ],
-    front: [
-      ...arm(L.LEFT_SHOULDER, L.LEFT_ELBOW, L.LEFT_WRIST, L.LEFT_INDEX),
-      ...arm(L.RIGHT_SHOULDER, L.RIGHT_ELBOW, L.RIGHT_WRIST, L.RIGHT_INDEX),
-    ],
-  };
+  return [
+    cap(p(s, hip), W.hip, k, W.knee),
+    cap(k, W.knee, calf, W.calf),
+    cap(calf, W.calf, a, W.ankle),
+    cap(a, W.ankle, p(s, toe), W.foot),
+    cap(p(s, sh), W.shoulder, p(s, el), W.elbow),
+    cap(p(s, el), W.elbow, p(s, wr), W.wrist),
+    cap(p(s, wr), W.wrist, p(s, hand), W.hand * 0.85),
+  ];
+}
+
+function corePaths(s: LandmarkSet, m: Metrics): string[] {
+  const u = m.unit * m.mass;
+  const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
+  const cap = (a: Point, ra: number, b: Point, rb: number) =>
+    taperedCapsule(a, ra * u, b, rb * u);
+  return [
+    cap(shoulder, W.neck * 1.45, m.neckBase, W.neck * 0.95),
+    cap(p(s, L.LEFT_HIP), W.hip * 0.95, p(s, L.RIGHT_HIP), W.hip * 0.95),
+    torsoPath(s, m),
+  ];
 }
 
 export function PoseSilhouette({
   skeletons,
+  ground = 'none',
   opacity = 1,
   fill = 'var(--silhouette-fill, #C7D3E2)',
-  shade = 'var(--silhouette-shade, #7A8CA6)',
+  shade = 'var(--silhouette-shade, #8496AE)',
   className,
   style,
   aspect = 3 / 4,
   mirrored = false,
-  shaded = true,
-  ground = 'none',
+  variant = 'reference',
+  fit = variant === 'reference',
+  mass = 1,
+  backSide = null,
 }: Props) {
   const gid = useId().replace(/:/g, '');
   const height = 1;
   const width = aspect;
-  const paint = shaded ? `url(#g${gid})` : fill;
+  const front = variant === 'overlay' ? fill : `url(#f${gid})`;
+  const back = variant === 'overlay' ? fill : `url(#b${gid})`;
 
   return (
     <svg
@@ -262,28 +242,38 @@ export function PoseSilhouette({
       aria-hidden="true"
       focusable="false"
     >
-      {shaded && (
+      {variant === 'reference' && (
         <defs>
-          {/* Both stops are fully opaque. A gradient that varies opacity makes
-              every overlapping limb visible through the torso. */}
-          {/* userSpaceOnUse, not the default objectBoundingBox: with per-shape
-              bounding boxes every limb gets its own gradient and the figure
-              renders as a patchwork of mismatched tones. */}
+          {/* Both stops are opaque: a gradient that varies alpha would show
+              every overlapping limb through the torso. */}
           <linearGradient
-            id={`g${gid}`}
+            id={`f${gid}`}
             gradientUnits="userSpaceOnUse"
-            x1={width * 0.15}
+            x1={width * 0.2}
             y1={0}
-            x2={width * 0.95}
-            y2={height * 0.9}
+            x2={width * 0.9}
+            y2={height}
           >
             <stop offset="0%" stopColor={fill} />
+            <stop offset="100%" stopColor={shade} />
+          </linearGradient>
+          <linearGradient
+            id={`b${gid}`}
+            gradientUnits="userSpaceOnUse"
+            x1={width * 0.2}
+            y1={0}
+            x2={width * 0.9}
+            y2={height}
+          >
+            <stop offset="0%" stopColor={shade} />
             <stop offset="100%" stopColor={shade} />
           </linearGradient>
         </defs>
       )}
       <g opacity={opacity} transform={mirrored ? `translate(${width} 0) scale(-1 1)` : undefined}>
-        {ground !== 'none' &&
+        <g transform={fit ? fitTransform(skeletons, width, height, mass) : undefined}>
+        {variant === 'reference' &&
+          ground !== 'none' &&
           skeletons.length > 0 &&
           groundMark(
             skeletons[0].map((q) => ({ ...q, x: q.x * width })),
@@ -292,53 +282,96 @@ export function PoseSilhouette({
             height,
           )}
         {skeletons.map((skeleton, si) => {
-          // Skeletons are authored in a square 0..1 box; map x into the viewBox.
           const s = skeleton.map((q) => ({ ...q, x: q.x * width }));
-          const m = metricsFor(s);
-          const layers = bodyLayers(s, m);
-          const hairline = {
-            stroke: 'rgba(9, 15, 26, 0.22)',
-            strokeWidth: m.unit * 0.005,
-          };
+          const m = metricsFor(s, mass);
+          const far = backSide;
+          const near = far === 'left' ? 'right' : far === 'right' ? 'left' : null;
           return (
-            <g key={si} fill={paint}>
-              <g {...hairline}>
-                {layers.back.map((d, i) => (
-                  <path key={i} d={d} />
+            <g key={si}>
+              {far && (
+                <g fill={back}>
+                  {limbPaths(s, m, far).map((d, i) => (
+                    <path key={i} d={d} />
+                  ))}
+                </g>
+              )}
+              <g fill={front}>
+                {!far &&
+                  limbPaths(s, m, 'left').map((d, i) => <path key={`l${i}`} d={d} />)}
+                {!far &&
+                  limbPaths(s, m, 'right').map((d, i) => <path key={`r${i}`} d={d} />)}
+                {corePaths(s, m).map((d, i) => (
+                  <path key={`c${i}`} d={d} />
                 ))}
-              </g>
-              {layers.body.map((d, i) => (
-                <path key={i} d={d} />
-              ))}
-              <g {...hairline}>
-                {layers.front.map((d, i) => (
-                  <path key={i} d={d} />
-                ))}
+                {near && limbPaths(s, m, near).map((d, i) => <path key={`n${i}`} d={d} />)}
                 <ellipse
                   cx={m.headCentre.x}
                   cy={m.headCentre.y}
                   rx={m.headRadius * 0.84}
                   ry={m.headRadius}
                   transform={`rotate(${headTilt(s, m)} ${m.headCentre.x} ${m.headCentre.y})`}
-                  stroke="none"
                 />
                 {facePlane(s, m)}
               </g>
             </g>
           );
         })}
+        </g>
       </g>
     </svg>
   );
 }
 
 /**
- * A small profile bump where the face is pointing.
+ * Scales the figure to fill its frame.
  *
- * Without it a silhouette cannot say which way someone is facing, and facing is
- * half of what a pose reference has to communicate. It is drawn in the same
- * fill so it reads as part of the head rather than as a feature, and it comes
- * from the nose landmark, so it flattens out as the subject turns away — which
+ * A pose's skeleton is placed for the CAMERA, where where-you-stand-in-frame is
+ * part of the instruction. A thumbnail has no such job: a small figure adrift in
+ * a big rectangle just wastes the card (§11). The bounds are padded by the
+ * silhouette's own thickness so limbs are not clipped at the edge.
+ */
+function fitTransform(
+  skeletons: LandmarkSet[],
+  width: number,
+  height: number,
+  mass: number,
+): string | undefined {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const skeleton of skeletons) {
+    for (const q of skeleton) {
+      const x = q.x * width;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (q.y < minY) minY = q.y;
+      if (q.y > maxY) maxY = q.y;
+    }
+  }
+  if (!Number.isFinite(minX) || maxX <= minX || maxY <= minY) return undefined;
+
+  // Landmarks are joint centres; the drawn body extends past them by roughly a
+  // hip radius, and further for a heavier build.
+  const bleed = 0.055 * mass;
+  minX -= bleed;
+  maxX += bleed;
+  minY -= bleed;
+  maxY += bleed;
+
+  const margin = 0.03;
+  const scale = Math.min(
+    (width * (1 - margin * 2)) / (maxX - minX),
+    (height * (1 - margin * 2)) / (maxY - minY),
+  );
+  const tx = width / 2 - ((minX + maxX) / 2) * scale;
+  const ty = height / 2 - ((minY + maxY) / 2) * scale;
+  return `translate(${n(tx)} ${n(ty)}) scale(${n(scale)})`;
+}
+
+/**
+ * A small profile bump where the face points, drawn in the body tone so it
+ * reads as part of the head. It flattens out as the subject turns away, which
  * is itself the correct signal.
  */
 function facePlane(s: LandmarkSet, m: Metrics): JSX.Element | null {
@@ -356,12 +389,11 @@ function facePlane(s: LandmarkSet, m: Metrics): JSX.Element | null {
       cy={m.headCentre.y + (dy / len) * reach * 0.9}
       rx={r * 0.28}
       ry={r * 0.32}
-      stroke="none"
     />
   );
 }
 
-/** Aligns the head ellipse with the neck so a tilted head does not look bolted on. */
+/** Aligns the head with the neck so a tilted head does not look bolted on. */
 function headTilt(s: LandmarkSet, m: Metrics): number {
   const shoulder = midpoint(p(s, L.LEFT_SHOULDER), p(s, L.RIGHT_SHOULDER));
   const dx = m.headCentre.x - shoulder.x;
@@ -370,17 +402,14 @@ function headTilt(s: LandmarkSet, m: Metrics): number {
   return (Math.atan2(dy, dx) * 180) / Math.PI + 90;
 }
 
-/**
- * The surface the pose depends on, drawn as a single understated rule. It is
- * information, not decoration: a seated pose without it is unreadable.
- */
+/** The surface the pose depends on, as one understated rule. */
 function groundMark(
   s: LandmarkSet,
   hint: GroundHint,
   width: number,
   height: number,
 ): JSX.Element | null {
-  const stroke = 'rgba(154, 170, 192, 0.3)';
+  const stroke = 'rgba(154, 170, 192, 0.28)';
   const w = 0.0035;
 
   if (hint === 'seat' || hint === 'floor' || hint === 'rail') {
@@ -391,18 +420,14 @@ function groundMark(
           ? (p(s, L.LEFT_WRIST).y + p(s, L.RIGHT_WRIST).y) / 2
           : Math.max(...s.map((q) => q.y)) + 0.035;
     if (y > height) return null;
-    return (
-      <line x1={width * 0.06} y1={y} x2={width * 0.94} y2={y} stroke={stroke} strokeWidth={w} />
-    );
+    return <line x1={0} y1={y} x2={width} y2={y} stroke={stroke} strokeWidth={w} />;
   }
 
   const bodyX = (p(s, L.LEFT_SHOULDER).x + p(s, L.RIGHT_SHOULDER).x) / 2;
   const spread = Math.abs(p(s, L.LEFT_SHOULDER).x - p(s, L.RIGHT_SHOULDER).x);
   const x =
     hint === 'wall-left'
-      ? Math.max(width * 0.04, bodyX - spread - 0.05)
-      : Math.min(width * 0.96, bodyX + spread + 0.05);
-  return (
-    <line x1={x} y1={height * 0.06} x2={x} y2={height * 0.96} stroke={stroke} strokeWidth={w} />
-  );
+      ? Math.max(width * 0.03, bodyX - spread - 0.05)
+      : Math.min(width * 0.97, bodyX + spread + 0.05);
+  return <line x1={x} y1={0} x2={x} y2={height} stroke={stroke} strokeWidth={w} />;
 }

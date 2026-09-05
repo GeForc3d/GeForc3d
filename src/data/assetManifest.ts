@@ -1,5 +1,6 @@
 import type { PoseAssets } from '@/models/pose';
 import { appBasePath } from '@/utilities/basePath';
+import type { RepresentationType } from '@/models/representation';
 
 /**
  * ASSET HONESTY (§35, §36).
@@ -28,16 +29,48 @@ import { appBasePath } from '@/utilities/basePath';
 export interface PoseAssetEntry {
   previewImage?: string;
   overlayImage?: string;
+  /**
+   * Per-body-type references. A pose may ship photography for some
+   * representations before others; each falls back to the pose-level asset,
+   * then to the development render.
+   */
+  representations?: Partial<Record<RepresentationType, PoseAssetEntry>>;
 }
 
 export const POSE_ASSET_MANIFEST: Record<string, PoseAssetEntry> = {
   // e.g. 'look-back': {
-  //   previewImage: 'assets/poses/look-back-preview.jpg',
-  //   overlayImage: 'assets/poses/look-back-overlay.png',
+  //   previewImage: 'assets/poses/look-back/average-preview.jpg',
+  //   overlayImage: 'assets/poses/look-back/average-overlay.png',
+  //   representations: {
+  //     curvy: {
+  //       previewImage: 'assets/poses/look-back/curvy-preview.jpg',
+  //       overlayImage: 'assets/poses/look-back/curvy-overlay.png',
+  //     },
+  //   },
   // },
 };
 
 const base = appBasePath;
+
+/**
+ * Assets for one body type, falling back to the pose-level entry.
+ *
+ * Photography can therefore land representation by representation rather than
+ * needing all six shot before any of them can be used.
+ */
+export const representationAssets = (
+  poseId: string,
+  type: RepresentationType,
+): { previewImage: string | null; overlayImage: string | null } => {
+  const entry = POSE_ASSET_MANIFEST[poseId];
+  const specific = entry?.representations?.[type];
+  const preview = specific?.previewImage ?? entry?.previewImage;
+  const overlay = specific?.overlayImage ?? entry?.overlayImage;
+  return {
+    previewImage: preview ? `${base()}${preview}` : null,
+    overlayImage: overlay ? `${base()}${overlay}` : null,
+  };
+};
 
 export const resolveAssets = (poseId: string): PoseAssets => {
   const entry = POSE_ASSET_MANIFEST[poseId];

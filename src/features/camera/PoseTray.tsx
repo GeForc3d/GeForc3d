@@ -1,6 +1,7 @@
 import { Sheet } from '@/components/Sheet';
 import { PoseReference } from '@/components/PoseReference';
 import type { ResolvedPose } from '@/models/pose';
+import { useReferencePreference } from '@/features/saved/referencePreference';
 
 interface Props {
   open: boolean;
@@ -16,6 +17,7 @@ interface Props {
  * skeleton and the guidance immediately, without restarting the camera (§44).
  */
 export function PoseTray({ open, poses, currentId, onPick, onClose, onEditShot }: Props) {
+  const { forPose } = useReferencePreference();
   return (
     <Sheet
       open={open}
@@ -38,7 +40,7 @@ export function PoseTray({ open, poses, currentId, onPick, onClose, onEditShot }
               aria-pressed={p.id === currentId}
             >
               <div className="tray-item__media">
-                <PoseReference pose={p} showBadge={false} />
+                <PoseReference pose={p} representation={forPose(p.id)} showBadge={false} />
               </div>
               <div className="tray-item__name">{p.name}</div>
             </button>

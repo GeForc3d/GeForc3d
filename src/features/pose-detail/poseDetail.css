@@ -120,3 +120,12 @@
 .detail__related {
   padding: var(--space-6) var(--space-4) 0;
 }
+
+.detail__reps {
+  padding: var(--space-4) 0 0;
+}
+
+.detail__reps .eyebrow {
+  display: block;
+  padding: 0 var(--space-4) var(--space-2);
+}

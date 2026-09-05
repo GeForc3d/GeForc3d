@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { ResolvedPose } from '@/models/pose';
+import type { RepresentationType } from '@/models/representation';
+import { representationOf } from '@/data/poseRepository';
 import type { OverlayTransform } from '@/models/shotSession';
 import { PoseSilhouette } from '@/components/PoseSilhouette';
-import { groundFor } from '@/components/PoseReference';
+import { backSideFor } from '@/components/PoseReference';
+import { BODY_PROPORTIONS } from '@/models/representation';
 import { reportBrokenAsset } from '@/data/assetManifest';
 
 /**
@@ -17,6 +20,8 @@ import { reportBrokenAsset } from '@/data/assetManifest';
 
 interface Props {
   pose: ResolvedPose;
+  /** Which body the guide is drawn as. */
+  representation: RepresentationType;
   transform: OverlayTransform;
   opacity: number;
   mirrored: boolean;
@@ -34,6 +39,7 @@ const cssFor = (t: OverlayTransform, w: number, h: number) =>
 
 export function GuideOverlay({
   pose,
+  representation,
   transform,
   opacity,
   mirrored,
@@ -135,7 +141,8 @@ export function GuideOverlay({
     }
   };
 
-  const usingPhoto = Boolean(pose.assets.overlayImage);
+  const rep = representationOf(pose, representation);
+  const usingPhoto = Boolean(rep.overlayImage);
 
   return (
     <>
@@ -151,19 +158,20 @@ export function GuideOverlay({
         <div className="guide__inner">
           {usingPhoto ? (
             <img
-              src={pose.assets.overlayImage!}
+              src={rep.overlayImage!}
               alt=""
               style={{ transform: mirrored ? 'scaleX(-1)' : undefined }}
-              onError={() => reportBrokenAsset(pose.assets.overlayImage!)}
+              onError={() => reportBrokenAsset(rep.overlayImage!)}
             />
           ) : (
             <PoseSilhouette
-              skeletons={pose.targetSkeletons}
-              ground={groundFor(pose)}
+              skeletons={rep.targetSkeletons}
+              variant="overlay"
+              mass={BODY_PROPORTIONS[rep.representationType].mass}
+              backSide={backSideFor(pose)}
               mirrored={mirrored}
               fill="#EAF1FB"
               aspect={containerHeight > 0 ? containerWidth / containerHeight : 3 / 4}
-              shaded={false}
             />
           )}
         </div>

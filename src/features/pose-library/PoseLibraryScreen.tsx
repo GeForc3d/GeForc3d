@@ -11,6 +11,7 @@ import { LocalSceneInterpreter } from '@/search/sceneInterpreter';
 import { ShotSetupBar } from '@/features/shot-setup/ShotSetupBar';
 import { ShotSetupSheet, type ShotSetupDraft } from '@/features/shot-setup/ShotSetupSheet';
 import { useSaved } from '@/features/saved/savedStore';
+import { useReferencePreference } from '@/features/saved/referencePreference';
 import type { Scene } from '@/models/taxonomy';
 import '@/features/discover/discover.css';
 
@@ -25,6 +26,7 @@ export function PoseLibraryScreen() {
   const [editing, setEditing] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { favourites, toggleFavourite } = useSaved();
+  const { forPose } = useReferencePreference();
 
   const interpreted = useMemo(
     () => LocalSceneInterpreter.interpret(session.searchText),
@@ -85,7 +87,7 @@ export function PoseLibraryScreen() {
     <div className="screen">
       <Header
         title="Poses"
-        subtitle={`${results.length} of ${PoseRepository.count()}`}
+        subtitle={`${results.length} ${results.length === 1 ? 'pose' : 'poses'}`}
         backFallback={routes.home}
         right={
           <button
@@ -101,13 +103,22 @@ export function PoseLibraryScreen() {
 
       <div className="screen__scroll" ref={scrollRef}>
         <div style={{ padding: '0 var(--space-4) var(--space-4)' }}>
-          <ShotSetupBar
-            value={setup}
-            onChange={(next) => update({ ...next, resultScrollPosition: 0 })}
-            onEdit={() => setEditing(true)}
-            searchText={session.searchText || undefined}
-            onClearSearch={() => update({ searchText: '' })}
-          />
+          {anyFilter ? (
+            <ShotSetupBar
+              value={setup}
+              onChange={(next) => update({ ...next, resultScrollPosition: 0 })}
+              onEdit={() => setEditing(true)}
+              searchText={session.searchText || undefined}
+              onClearSearch={() => update({ searchText: '' })}
+            />
+          ) : (
+            <div className="library__bar">
+              <span className="muted">All poses</span>
+              <button type="button" className="chip chip--add" onClick={() => setEditing(true)}>
+                Filters
+              </button>
+            </div>
+          )}
         </div>
 
         {results.length ? (
@@ -118,6 +129,7 @@ export function PoseLibraryScreen() {
                   key={r.pose.id}
                   pose={r.pose}
                   to={routes.pose(r.pose.id)}
+                  representation={forPose(r.pose.id)}
                   note={r.highlight}
                   selected={session.selectedPoseId === r.pose.id}
                   isFavourite={favourites.includes(r.pose.id)}

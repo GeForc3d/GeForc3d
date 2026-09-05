@@ -15,6 +15,7 @@ import { captureFrame, releaseCapture, type Capture } from '@/camera/capture';
 import { IDENTITY_TRANSFORM, type OverlayTransform } from '@/models/shotSession';
 import { L } from '@/models/landmarks';
 import { SavedStore } from '@/features/saved/savedStore';
+import { useReferencePreference } from '@/features/saved/referencePreference';
 import { ShotSetupSheet, type ShotSetupDraft } from '@/features/shot-setup/ShotSetupSheet';
 import { CaptureReview } from '@/features/capture-review/CaptureReview';
 import { useCameraController } from './useCameraController';
@@ -41,6 +42,7 @@ import './camera.css';
 export function CameraScreen() {
   const navigate = useNavigate();
   const { session, update, resetOverlay } = useShotSession();
+  const { forPose } = useReferencePreference();
 
   const stageRef = useRef<HTMLDivElement>(null);
   const [showTray, setShowTray] = useState(false);
@@ -250,6 +252,7 @@ export function CameraScreen() {
         {pose && videoReady && (
           <GuideOverlay
             pose={pose}
+            representation={forPose(pose.id)}
             transform={session.overlayTransform}
             opacity={session.overlayOpacity}
             mirrored={session.overlayMirrored}
@@ -528,6 +531,7 @@ model ${visionStatus}`}
                 key={p.id}
                 pose={p}
                 to={routes.camera}
+                representation={forPose(p.id)}
                 onSelect={() => {
                   selectPose(p.id);
                   setPendingSetup(null);

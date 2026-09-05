@@ -11,7 +11,7 @@
 }
 
 .setup-group + .setup-group {
-  margin-top: var(--space-5);
+  margin-top: var(--space-4);
 }
 
 .setup-group__title {
@@ -19,7 +19,7 @@
   align-items: baseline;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 
 .setup-group__hint {

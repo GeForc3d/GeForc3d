@@ -1,18 +1,15 @@
 import { Link } from 'react-router-dom';
 import type { ResolvedPose } from '@/models/pose';
-import {
-  BODY_POSITION_LABELS,
-  DIFFICULTY_LABELS,
-  PEOPLE_LABELS,
-} from '@/models/taxonomy';
+import type { RepresentationType } from '@/models/representation';
+import { BODY_POSITION_LABELS, DIFFICULTY_LABELS, PEOPLE_LABELS } from '@/models/taxonomy';
 import { Icon } from './Icon';
 import { PoseReference } from './PoseReference';
-import { SavedStore } from '@/features/saved/savedStore';
 
 interface Props {
   pose: ResolvedPose;
   to: string;
-  /** Short reason this pose was recommended. Kept to a few words (§32). */
+  representation: RepresentationType;
+  /** Short reason this pose was recommended. A few words, or nothing (§32). */
   note?: string;
   selected?: boolean;
   isFavourite?: boolean;
@@ -20,16 +17,21 @@ interface Props {
   onSelect?: () => void;
 }
 
+/**
+ * A photography-led card: the human reference fills the frame edge to edge, and
+ * the only thing over it is the save control. Name and metadata sit underneath
+ * in small type, so the picture is what the eye lands on (§11).
+ */
 export function PoseCard({
   pose,
   to,
+  representation,
   note,
   selected,
-  isFavourite,
+  isFavourite = false,
   onToggleFavourite,
   onSelect,
 }: Props) {
-  const fav = isFavourite ?? SavedStore.isFavourite(pose.id);
   return (
     <div className={`pose-card${selected ? ' pose-card--on' : ''}`}>
       <Link
@@ -41,37 +43,31 @@ export function PoseCard({
         }. ${DIFFICULTY_LABELS[pose.difficulty]}.`}
       >
         <div className="pose-card__media">
-          <PoseReference pose={pose} showBadge={false} />
-          {pose.difficulty !== 'easy' && (
-            <span
-              className={`pose-card__diff${
-                pose.difficulty === 'editorial' ? ' pose-card__diff--editorial' : ''
-              }`}
-            >
-              {DIFFICULTY_LABELS[pose.difficulty]}
-            </span>
+          <PoseReference pose={pose} representation={representation} showBadge={false} />
+          {pose.difficulty === 'editorial' && (
+            <span className="pose-card__diff">{DIFFICULTY_LABELS[pose.difficulty]}</span>
           )}
         </div>
         <div className="pose-card__meta">
           <div className="pose-card__name">{pose.name}</div>
           <div className="pose-card__sub">
             {BODY_POSITION_LABELS[pose.bodyPosition]} · {PEOPLE_LABELS[pose.peopleType]}
+            {note ? ` · ${note}` : ''}
           </div>
-          {note && <div className="pose-card__note">{note}</div>}
         </div>
       </Link>
       {onToggleFavourite && (
         <button
           type="button"
-          className={`pose-card__fav${fav ? ' pose-card__fav--on' : ''}`}
+          className={`pose-card__fav${isFavourite ? ' pose-card__fav--on' : ''}`}
           onClick={(e) => {
             e.preventDefault();
             onToggleFavourite(pose.id);
           }}
-          aria-label={fav ? `Remove ${pose.name} from saved` : `Save ${pose.name}`}
-          aria-pressed={fav}
+          aria-label={isFavourite ? `Remove ${pose.name} from saved` : `Save ${pose.name}`}
+          aria-pressed={isFavourite}
         >
-          <Icon name={fav ? 'bookmark-filled' : 'bookmark'} size={19} />
+          <Icon name={isFavourite ? 'bookmark-filled' : 'bookmark'} size={18} />
         </button>
       )}
     </div>

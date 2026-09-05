@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Icon } from '@/components/Icon';
@@ -16,6 +16,8 @@ import {
   PEOPLE_LABELS,
 } from '@/models/taxonomy';
 import { SavedStore, useSaved } from '@/features/saved/savedStore';
+import { useReferencePreference } from '@/features/saved/referencePreference';
+import { REPRESENTATION_LABELS, REPRESENTATION_TYPES, type RepresentationType } from '@/models/representation';
 import './poseDetail.css';
 
 /**
@@ -27,7 +29,17 @@ export function PoseDetailScreen() {
   const navigate = useNavigate();
   const { session, update } = useShotSession();
   const { favourites, toggleFavourite } = useSaved();
+  const { forPose } = useReferencePreference();
   const pose = PoseRepository.get(poseId);
+
+  /**
+   * Seeing the pose on a body closer to the person being photographed is the
+   * whole reason representations exist (§6). The choice is local to this screen
+   * and resets to the user's preference when they leave; it never edits the
+   * catalogue or creates a second pose.
+   */
+  const [chosen, setChosen] = useState<RepresentationType | null>(null);
+  const representation = chosen ?? (pose ? forPose(pose.id) : 'average');
 
   useEffect(() => {
     if (pose) SavedStore.markViewed(pose.id);
@@ -72,8 +84,27 @@ export function PoseDetailScreen() {
 
       <div className="screen__scroll">
         <div className="detail__media">
-          <PoseReference pose={pose} aspect={4 / 5} />
+          <PoseReference pose={pose} representation={representation} aspect={4 / 5} />
           <div className="detail__fade" />
+        </div>
+
+        <div className="detail__reps">
+          <span className="eyebrow">Shown on</span>
+          <div className="rep-switch">
+            {REPRESENTATION_TYPES.map((t) => (
+              <button
+                key={t}
+                type="button"
+                className={`rep-switch__item${
+                  representation === t ? ' rep-switch__item--on' : ''
+                }`}
+                onClick={() => setChosen(t)}
+                aria-pressed={representation === t}
+              >
+                {REPRESENTATION_LABELS[t]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="detail__head">
@@ -114,14 +145,14 @@ export function PoseDetailScreen() {
           </div>
         )}
 
-        {pose.assets.previewIsPlaceholder && (
+        {pose.representations.every((r) => r.isPlaceholder) && (
           <div className="detail__block">
             <div className="notice">
-              <div className="notice__title">This is a reference render</div>
+              <div className="notice__title">This is a reference render, not a photograph</div>
               <p className="notice__body">
-                Drawn from this pose's own joint data at real human proportions. It shows the shape
-                and the framing, but it is not a photograph. Photographic references have not been
-                shot for this build.
+                Drawn from this pose's own joint data at real human proportions, so it shows the
+                shape, the body turn and the framing. Photography has not been shot for this build.
+                Once it is, it drops into the same slot and this notice goes away.
               </p>
             </div>
           </div>
@@ -136,6 +167,7 @@ export function PoseDetailScreen() {
                   key={r.pose.id}
                   pose={r.pose}
                   to={routes.pose(r.pose.id)}
+                  representation={forPose(r.pose.id)}
                   note={r.highlight}
                   isFavourite={favourites.includes(r.pose.id)}
                   onToggleFavourite={toggleFavourite}

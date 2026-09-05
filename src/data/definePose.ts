@@ -189,10 +189,13 @@ export function definePose(def: PoseDef): Pose {
           : 'right'),
   };
 
+  // Head targets are read back off the built skeleton for the same reason as
+  // lean and hip tilt: the matcher must compare against what it will actually
+  // measure, not against the rig field that produced it.
   const headTarget: HeadTarget = {
-    yawDeg: rig.headYawDeg ?? 0,
+    yawDeg: Math.round(f.headYawDeg * 10) / 10,
     yawTolerance: def.head?.yawTolerance ?? 26,
-    pitchDeg: rig.headPitchDeg ?? 0,
+    pitchDeg: Math.round(f.headPitchDeg * 10) / 10,
     pitchTolerance: def.head?.pitchTolerance ?? 18,
     ...def.head,
   };

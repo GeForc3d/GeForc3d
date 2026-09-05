@@ -1,6 +1,7 @@
 import type { Pose } from '@/models/pose';
 import type { LandmarkSet } from '@/models/landmarks';
 import { deviationPriority, matchPose } from '@/pose-matching/matcher';
+import { SubjectShapeCalibration } from '@/pose-matching/features';
 import type { Deviation, GuidanceOutput, GuidanceStage } from './types';
 import { STAGE_ORDER } from './types';
 
@@ -61,6 +62,12 @@ export class GuidanceEngine {
   private inHold = false;
   private lastSeen = 0;
   private started = 0;
+  /**
+   * Learns the subject's own build so torso yaw is read as rotation rather than
+   * as body shape. Reset with the engine, because a new shoot may be a new
+   * person (§9).
+   */
+  private readonly shape = new SubjectShapeCalibration();
 
   constructor(private readonly config: GuidanceConfig = DEFAULT_GUIDANCE_CONFIG) {}
 
@@ -70,6 +77,7 @@ export class GuidanceEngine {
     this.inHold = false;
     this.lastSeen = 0;
     this.started = now;
+    this.shape.reset();
   }
 
   evaluate(input: GuidanceInput): GuidanceOutput {
@@ -120,10 +128,12 @@ export class GuidanceEngine {
     // v1 guides the primary subject's body; extra people are guided by
     // placement and the visual guide (§89). We say nothing we cannot back up.
     const primary = people[0];
+    this.shape.observe(primary);
     const { deviations } = matchPose({
       pose,
       frameLandmarks: primary,
       worldLandmarks: input.worldLandmarks,
+      shoulderRatio: this.shape.get(),
     });
 
     const active = deviations.filter((d) => d.magnitude > 1);

@@ -1,4 +1,5 @@
 import type { LandmarkSet } from './landmarks';
+import type { PoseRepresentation } from './representation';
 import type { RigSpec } from './skeleton';
 import type {
   BodyPosition,
@@ -164,9 +165,16 @@ export interface Pose {
   searchKeywords: string[];
 }
 
-/** A pose with its skeletons resolved and its assets located. */
+/**
+ * A pose with its human references resolved.
+ *
+ * `targetSkeletons` is the CANONICAL geometry the matcher compares against and
+ * never varies by representation (§9). `representations` are what the user
+ * sees, one per body type.
+ */
 export interface ResolvedPose extends Pose {
   targetSkeletons: LandmarkSet[];
+  representations: PoseRepresentation[];
   assets: PoseAssets;
 }
 

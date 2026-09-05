@@ -1,4 +1,5 @@
 import { L, LANDMARK_COUNT, type Landmark, type LandmarkSet } from './landmarks';
+import type { BodyProportions } from './representation';
 
 /**
  * Target skeletons are authored through a small forward-kinematic rig rather
@@ -16,8 +17,25 @@ import { L, LANDMARK_COUNT, type Landmark, type LandmarkSet } from './landmarks'
  * view. Derived in `skeleton.test.ts`.
  */
 
-/** Segment lengths as fractions of nominal standing height. */
-export const PROPORTIONS = {
+/**
+ * Canonical segment lengths as fractions of nominal standing height. A
+ * representation scales these to draw a different body; the matcher always uses
+ * the canonical figure, so proportions never affect scoring (§9).
+ */
+export interface SegmentLengths {
+  shoulderWidth: number;
+  hipWidth: number;
+  torso: number;
+  neck: number;
+  headRadius: number;
+  upperArm: number;
+  forearm: number;
+  thigh: number;
+  shin: number;
+  foot: number;
+}
+
+export const PROPORTIONS: SegmentLengths = {
   shoulderWidth: 0.2,
   hipWidth: 0.135,
   torso: 0.28,
@@ -28,7 +46,7 @@ export const PROPORTIONS = {
   thigh: 0.245,
   shin: 0.235,
   foot: 0.06,
-} as const;
+};
 
 export interface Vec2 {
   x: number;
@@ -104,8 +122,8 @@ const clone = (p: Vec2): Landmark => ({ x: p.x, y: p.y, z: 0, visibility: 1 });
  * Builds a 33-point landmark set from a rig spec, in an arbitrary unit space.
  * `normaliseSkeleton` maps it into the 0..1 preview box afterwards.
  */
-export function buildSkeleton(spec: RigSpec): LandmarkSet {
-  const P = PROPORTIONS;
+export function buildSkeleton(spec: RigSpec, body?: BodyProportions): LandmarkSet {
+  const P = body ? scaleProportions(body) : PROPORTIONS;
   const yaw = spec.yawDeg ?? 0;
   const lean = spec.leanDeg ?? 0;
   const legScale = spec.legScale ?? 1;
@@ -279,5 +297,24 @@ export function normaliseSkeleton(pts: LandmarkSet, box: NormalisedSkeletonBox):
   }));
 }
 
-export const buildTargetSkeleton = (spec: RigSpec, box: NormalisedSkeletonBox): LandmarkSet =>
-  normaliseSkeleton(buildSkeleton(spec), box);
+export const buildTargetSkeleton = (
+  spec: RigSpec,
+  box: NormalisedSkeletonBox,
+  body?: BodyProportions,
+): LandmarkSet => normaliseSkeleton(buildSkeleton(spec, body), box);
+
+/** Applies a representation's multipliers to the canonical segment lengths. */
+function scaleProportions(body: BodyProportions): SegmentLengths {
+  return {
+    shoulderWidth: PROPORTIONS.shoulderWidth * body.shoulderWidth,
+    hipWidth: PROPORTIONS.hipWidth * body.hipWidth,
+    torso: PROPORTIONS.torso * body.torso,
+    neck: PROPORTIONS.neck * body.neck,
+    headRadius: PROPORTIONS.headRadius * body.headRadius,
+    upperArm: PROPORTIONS.upperArm * body.limb,
+    forearm: PROPORTIONS.forearm * body.limb,
+    thigh: PROPORTIONS.thigh * body.limb,
+    shin: PROPORTIONS.shin * body.limb,
+    foot: PROPORTIONS.foot * body.limb,
+  };
+}

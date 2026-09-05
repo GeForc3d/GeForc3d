@@ -108,33 +108,30 @@
 .scene-tile {
   position: relative;
   display: flex;
-  align-items: flex-end;
-  min-height: 74px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 68px;
   padding: var(--space-3);
   border-radius: var(--radius);
   border: 1px solid var(--hairline);
-  background: linear-gradient(160deg, var(--surface-2), var(--surface) 88%);
-  font-size: 14px;
+  background: var(--surface);
+  font-size: 13.5px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--text);
-  overflow: hidden;
   transition: border-color var(--dur) var(--ease);
 }
 
 .scene-tile--on {
   border-color: var(--blue-line);
-  background: linear-gradient(160deg, rgba(41, 121, 255, 0.16), var(--surface) 88%);
+  background: var(--blue-dim);
 }
 
 .scene-tile__mark {
-  position: absolute;
-  right: -12px;
-  top: -14px;
-  width: 62px;
-  height: 62px;
-  opacity: 0.13;
-  color: var(--blue-hi);
+  color: var(--text-3);
+  flex: none;
 }
 
 .resume {
@@ -211,4 +208,57 @@
   font-size: 13.5px;
   color: var(--text-2);
   line-height: 1.5;
+}
+
+/* ---------- Editorial rails ---------- */
+
+.rail {
+  display: flex;
+  gap: var(--space-3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px var(--space-4) 0;
+  margin: 0 calc(var(--space-4) * -1);
+  scroll-padding-inline: var(--space-4);
+  scroll-snap-type: x proximity;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.rail__item {
+  flex: none;
+  width: 132px;
+  text-decoration: none;
+  color: inherit;
+  scroll-snap-align: start;
+}
+
+.rail__media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.rail__name {
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.section__head > div {
+  min-width: 0;
+}
+
+.library__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: 14px;
 }
