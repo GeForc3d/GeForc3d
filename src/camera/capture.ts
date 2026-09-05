@@ -95,6 +95,8 @@ export async function shareCapture(capture: Capture, filename: string): Promise<
     share?: (data: ShareData) => Promise<void>;
   };
 
+  // The share sheet is the only route to the iOS Photos library, and it is the
+  // one that works inside an embedded viewer too.
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
       await nav.share({ files: [file] });
@@ -103,8 +105,18 @@ export async function shareCapture(capture: Capture, filename: string): Promise<
       if ((err as { name?: string })?.name === 'AbortError') {
         return { ok: false, method: 'share', message: 'Sharing was cancelled.' };
       }
-      // Fall through to the download path.
     }
+  }
+
+  // A download link is inert in a sandboxed viewer and does nothing visible on
+  // iOS either, so we do not pretend it worked. Press and hold on the photo is
+  // the instruction that is actually true everywhere (§84, §115).
+  if (isEmbedded()) {
+    return {
+      ok: false,
+      method: 'none',
+      message: 'Press and hold the photo to save it.',
+    };
   }
 
   try {
@@ -119,7 +131,16 @@ export async function shareCapture(capture: Capture, filename: string): Promise<
     return {
       ok: false,
       method: 'none',
-      message: 'This browser cannot save the photo directly. Press and hold the image to save it.',
+      message: 'Press and hold the photo to save it.',
     };
+  }
+}
+
+/** A sandboxed viewer cannot start a download, however the link is written. */
+function isEmbedded(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
   }
 }

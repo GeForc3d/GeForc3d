@@ -1,5 +1,6 @@
 import type { LandmarkSet } from '@/models/landmarks';
 import { appBasePath } from '@/utilities/basePath';
+import { VISION_AVAILABLE } from './availability';
 
 /**
  * MediaPipe Pose Landmarker, running entirely on device (§55, §107).
@@ -74,6 +75,11 @@ export class PoseDetector {
   }
 
   private async doLoad(): Promise<void> {
+    if (!VISION_AVAILABLE) {
+      this.status = 'unsupported';
+      this.error = 'This build does not ship the pose model.';
+      return;
+    }
     this.status = 'loading';
     this.error = null;
     try {

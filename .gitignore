@@ -7,3 +7,5 @@ coverage
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+dist-artifact

@@ -27,42 +27,36 @@ clean image, and Back keeps the user's context.
 The camera needs a secure context. `localhost` counts; anything else must be
 served over https.
 
-## Running it on your phone
+## Opening it
 
-iOS Safari only grants camera access over **https** or on `localhost`. A LAN
-address like `http://192.168.1.5:5173` will load the app but the camera will
-refuse, so the usual "open the dev server on your phone" approach does not work
-here. Two options that do:
+### The quickest look
 
-### GitHub Pages (a permanent link)
+`npm run build:artifact` folds the whole app into a single HTML file
+(`dist-artifact/pose.html`) with no external assets. That file can be published
+as a Claude Artifact or opened directly in any browser — it needs no server.
 
-`.github/workflows/pages.yml` builds and deploys on every push. It needs Pages
-switched on once, because the workflow token is not allowed to create the Pages
-site itself:
+The one thing it cannot carry is the pose model: MediaPipe's model and WASM
+runtime are 27MB, past the single-file ceiling, so that build compiles
+`__VISION_AVAILABLE__` to false and the app says live guidance is off rather
+than failing at a load that could not succeed. Everything else is the same code.
+
+### On a phone, with the camera
+
+iOS Safari grants camera access only over **https** or on `localhost`. A LAN
+address such as `http://192.168.1.5:5173` will load the app and then refuse the
+camera, so a plain dev server on the same network is not enough.
+
+`.github/workflows/pages.yml` builds and deploys on every push, which gives a
+real https URL. It needs Pages switched on once, because the workflow token is
+not permitted to create the Pages site itself:
 
 > Repository **Settings → Pages → Build and deployment → Source → GitHub Actions**
 
-Then re-run the workflow (or push anything). The app lands at
-`https://<owner>.github.io/<repo>/` and every later push updates it.
-
-### A tunnel (for iterating)
-
-Faster while you are changing things — your phone hits your local dev server
-over https, with hot reload:
-
-```bash
-npm run dev -- --host
-npx cloudflared tunnel --url http://localhost:5173
-```
-
-That prints a `trycloudflare.com` https URL. Open it on the phone.
-
-### On the phone itself
+The app then lands at `https://<owner>.github.io/<repo>/`.
 
 Tap **Use this pose** to enter the camera; that is when Safari asks for
-permission. If you deny it by accident, Settings → Safari → Camera → Ask, then
-reload. Share → Add to Home Screen gives a full-screen icon, but nothing
-requires it.
+permission. If it is denied by accident: Settings → Safari → Camera → Ask, then
+reload.
 
 ## What it does
 

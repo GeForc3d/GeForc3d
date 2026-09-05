@@ -222,11 +222,13 @@ export function CameraScreen() {
     ? null
     : visionStatus === 'loading'
       ? 'Loading pose model…'
-      : visionStatus === 'error'
-        ? 'Live guidance unavailable. The manual guide still works.'
-        : degraded && !guidance.instruction && !guidance.hold
-          ? 'Guidance is running slowly on this device'
-          : null;
+      : visionStatus === 'unsupported'
+        ? 'Live guidance is off in this preview. Line the guide up by hand.'
+        : visionStatus === 'error'
+          ? 'Live guidance unavailable. The manual guide still works.'
+          : degraded && !guidance.instruction && !guidance.hold
+            ? 'Guidance is running slowly on this device'
+            : null;
 
   const blocked = state.status === 'error' || environment.availability === 'embedded-blocked';
 
